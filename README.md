@@ -31,6 +31,8 @@ saved customer library, crew hand-off, deposit collection via Stripe.
 
 - **Trace the roofline** on a photo (or the built-in demo house) — click along the eaves,
   drag any point to adjust. A warm light-string blooms across the roof as you go.
+- **Multiple roof runs** — trace the main gable, then hit **New run** for the detached
+  garage or porch. Each section is independent; footage and nodes sum across all of them.
 - **Preview any season** — Warm White, Cool White, Christmas, Halloween, Fourth of July,
   Fall Amber. The nodes recolor live and the scene dims to night so it reads like dusk.
 - **Real measurements** — set scale by clicking two points on something of known length
@@ -39,9 +41,17 @@ saved customer library, crew hand-off, deposit collection via Stripe.
   items, tax, and deposit. Permanent vs. seasonal pricing presets.
 - **Branded proposal** — generates a print/PDF-ready document with the lit-house preview
   embedded, itemized scope, totals, and a signature block.
+- **Shareable link** — one click copies a link that opens a clean, customer-facing
+  read-only proposal (the whole thing is encoded in the URL — no backend). The customer
+  can review, "Accept & request install," or save it as a PDF.
 - **Saved proposals** — everything persists locally; reopen and keep working.
 
 Everything runs client-side. No accounts, no backend, no build step.
+
+> **Note on share links:** because the proposal (including the house image) is packed into
+> the URL, links get long. Fine to send by email or a messaging app that accepts long links;
+> a future backend will mint short links. Uploaded photos are auto-downscaled to keep links
+> as small as possible.
 
 ## Run it
 
@@ -58,7 +68,7 @@ Cloudflare Pages / GitHub Pages — it's just static files.
 
 ## Keyboard
 
-`T` trace · `S` set scale · `N` toggle night · `Backspace` undo last point
+`T` trace · `S` set scale · `R` new run · `N` toggle night · `Backspace` undo last point
 
 ## Files
 
@@ -70,8 +80,10 @@ Cloudflare Pages / GitHub Pages — it's just static files.
 
 ## Roadmap to a paid product
 
-1. **Accounts + cloud sync** (Supabase/Postgres) so proposals follow the installer across devices.
-2. **Shareable proposal links** with accept + deposit (Stripe) — the close happens online.
+1. **Accounts + cloud sync** (Supabase/Postgres) so proposals follow the installer across devices,
+   and **short share links** (store the proposal server-side, send a tiny URL).
+2. **Online accept + deposit** (Stripe) on the shared proposal — the close happens online.
+   *(Read-only shareable proposals already ship; see above.)*
 3. **Customer & job library**, rebooking reminders (the recurring-revenue hook).
 4. **AI roofline assist** — auto-detect eaves from the uploaded photo so tracing is one tap.
 5. **Material/BOM export** for the install crew (channel length, node count, power injection).

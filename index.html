@@ -143,6 +143,7 @@
           <span>Proposal preview</span>
         </div>
         <div class="sheet-bar-right">
+          <button class="ghost-btn" id="btnShare">Copy share link</button>
           <button class="ghost-btn" id="btnPrint">Print / PDF</button>
           <button class="ghost-btn" id="btnCloseProposal">Close</button>
         </div>
@@ -173,6 +174,12 @@
       </div>
     </div>
   </template>
+
+  <!-- full-page read-only proposal (opened from a #p= share link) -->
+  <div id="sharedView" hidden></div>
+
+  <!-- transient toast -->
+  <div id="toast" class="toast" hidden></div>
 
   <script src="app.js"></script>
 </body>

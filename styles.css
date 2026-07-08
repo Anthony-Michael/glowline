@@ -352,6 +352,44 @@ input{ font-family:inherit; }
 .saved-empty{ text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
 
 /* ============ RESPONSIVE ============ */
+/* ============ TOAST ============ */
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(8px);
+  z-index:90; padding:12px 20px; border-radius:12px;
+  background:var(--ink-3); border:1px solid var(--hair-2); color:var(--frost);
+  font-size:13px; font-weight:600; box-shadow:var(--shadow-lift);
+  opacity:0; transition:opacity .2s, transform .2s; pointer-events:none;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.good{ border-color:rgba(127,224,176,.5); }
+
+/* ============ SHARED (customer-facing) PROPOSAL ============ */
+#sharedView{
+  position:fixed; inset:0; z-index:100; overflow-y:auto;
+  background:
+    radial-gradient(1000px 600px at 80% -10%, #172248 0%, transparent 55%),
+    var(--ink);
+}
+.shared-top{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 22px; border-bottom:1px solid var(--hair); position:sticky; top:0;
+  background:rgba(10,14,28,.85); backdrop-filter:blur(8px); z-index:2;
+}
+.shared-wrap{ max-width:820px; margin:0 auto; padding:34px 20px 70px; }
+.shared-wrap .doc{ border-radius:16px; box-shadow:var(--shadow-lift); }
+.shared-cta{
+  margin:22px auto 0; max-width:820px; display:flex; gap:12px; align-items:center; justify-content:center;
+  flex-wrap:wrap;
+}
+.shared-cta .cta-btn{ font-size:15px; padding:14px 28px; }
+.shared-foot{ text-align:center; color:var(--muted); font-size:12px; margin-top:34px; }
+.shared-foot a{ color:var(--frost-dim); text-decoration:none; }
+.shared-accepted{
+  max-width:820px; margin:22px auto 0; padding:20px 24px; border-radius:14px; text-align:center;
+  background:rgba(127,224,176,.08); border:1px solid rgba(127,224,176,.35); color:var(--good);
+  font-size:14px; font-weight:600;
+}
+
 @media (max-width:920px){
   .workspace{ grid-template-columns:1fr; grid-template-rows:1fr auto; }
   .rail{ border-left:none; border-top:1px solid var(--hair); max-height:44vh; }

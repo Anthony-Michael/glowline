@@ -476,7 +476,15 @@
     reader.onload = () => {
       const im = new Image();
       im.onload = () => {
-        state.imgSrc = reader.result; state.imgW = im.naturalWidth; state.imgH = im.naturalHeight;
+        // downscale so state + share links + storage stay small
+        const MAX = 1600;
+        let w = im.naturalWidth, h = im.naturalHeight;
+        const s = Math.min(1, MAX / Math.max(w, h));
+        w = Math.round(w * s); h = Math.round(h * s);
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        let src; try { src = cv.toDataURL('image/jpeg', 0.82); } catch (e) { src = reader.result; }
+        state.imgSrc = src; state.imgW = w; state.imgH = h;
         state.isDemo = false; state.runs = [{ id: uid(), points: [] }]; state.activeRun = 0;
         state.scale.pxPerFoot = null; state.night = false;
         el.img.src = state.imgSrc;
@@ -506,88 +514,178 @@
   $('#btnPrint').addEventListener('click', () => window.print());
   el.proposalScrim.addEventListener('click', (e) => { if (e.target === el.proposalScrim) el.proposalScrim.hidden = true; });
 
-  function openProposal() {
-    const c = state.customer;
-    const custForm = document.getElementById('customerFormTpl').content.cloneNode(true);
+  // portable snapshot of everything a proposal document needs to render
+  function docData() {
     const sub = subtotal(), tax = sub * (state.tax / 100), total = sub + tax, dep = total * (state.deposit / 100);
-    const feet = Math.round(polylineFeet());
-    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return {
+      v: 2, projectName: state.projectName, system: state.system, scene: state.scene,
+      imgSrc: state.imgSrc, imgW: state.imgW, imgH: state.imgH, runs: state.runs,
+      feet: Math.round(polylineFeet()),
+      lineItems: state.lineItems.map((l) => ({ label: l.label, unit: l.unit, qty: l.qty, rate: l.rate, amount: lineAmount(l) })),
+      tax: state.tax, deposit: state.deposit, customer: { ...state.customer },
+      sub, taxAmt: tax, total, dep,
+    };
+  }
 
-    const heroInner = buildOverlayInner(state.runs, state.scene, { handles: false, still: false, W: state.imgW });
-    const rows = state.lineItems.map((l) => {
+  function docHTML(d) {
+    const c = d.customer || {};
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const heroInner = buildOverlayInner(d.runs, d.scene, { handles: false, still: false, W: d.imgW });
+    const sub = d.sub ?? d.lineItems.reduce((s, l) => s + l.amount, 0);
+    const tax = d.taxAmt ?? sub * (d.tax / 100);
+    const total = d.total ?? sub + tax;
+    const dep = d.dep ?? total * (d.deposit / 100);
+    const sceneName = (SCENES[d.scene] || SCENES.warm).name;
+    const rows = d.lineItems.map((l) => {
       const q = l.unit ? `${l.qty || 0} ${l.unit} × $${l.rate}` : 'Flat rate';
       return `<tr><td><strong>${escapeHtml(l.label)}</strong><div class="desc">${q}</div></td>
-              <td class="r">${money(lineAmount(l))}</td></tr>`;
+              <td class="r">${money(l.amount)}</td></tr>`;
     }).join('');
-
-    el.proposalBody.innerHTML = '';
-    el.proposalBody.appendChild(custForm);
-    const doc = document.createElement('div');
-    doc.className = 'doc';
-    doc.style.webkitPrintColorAdjust = 'exact';
-    doc.style.printColorAdjust = 'exact';
-    doc.innerHTML = `
+    return `<div class="doc" style="-webkit-print-color-adjust:exact;print-color-adjust:exact">
       <div class="doc-top">
         <div>
-          <div class="doc-co" data-slot="company">${escapeHtml(c.company || 'Your Company')}</div>
-          <div class="doc-badge"><span class="dot"></span>Permanent · Holiday Lighting Proposal</div>
+          <div class="doc-co">${escapeHtml(c.company || 'Your Company')}</div>
+          <div class="doc-badge"><span class="dot"></span>${d.system === 'permanent' ? 'Permanent' : 'Seasonal'} · Holiday Lighting Proposal</div>
         </div>
         <div class="doc-meta">
-          <div>Prepared for <strong data-slot="name">${escapeHtml(c.name || '—')}</strong></div>
-          <div data-slot="address">${escapeHtml(c.address || '')}</div>
+          <div>Prepared for <strong>${escapeHtml(c.name || '—')}</strong></div>
+          <div>${escapeHtml(c.address || '')}</div>
           <div>${today}</div>
-          <div>Good through <strong data-slot="expiry">${escapeHtml(c.expiry || '14 days')}</strong></div>
+          <div>Good through <strong>${escapeHtml(c.expiry || '14 days')}</strong></div>
         </div>
       </div>
-
       <div class="doc-hero">
         <div style="position:relative;line-height:0">
-          <img src="${state.imgSrc}" style="width:100%;display:block" />
+          <img src="${d.imgSrc}" style="width:100%;display:block" />
           <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,9,20,.5),rgba(6,9,20,.7));mix-blend-mode:multiply"></div>
-          <svg viewBox="0 0 ${state.imgW} ${state.imgH}" preserveAspectRatio="none"
+          <svg viewBox="0 0 ${d.imgW} ${d.imgH}" preserveAspectRatio="none"
                style="position:absolute;inset:0;width:100%;height:100%">${heroInner}</svg>
         </div>
-        <div class="doc-hero-cap">${SCENES[state.scene].name} · ${feet} ft of roofline</div>
+        <div class="doc-hero-cap">${sceneName} · ${d.feet} ft of roofline</div>
       </div>
-
       <h2>Scope &amp; investment</h2>
       <table class="doc-table"><tbody>${rows}</tbody></table>
-
       <div class="doc-tot">
         <div class="row"><span>Subtotal</span><span class="mono">${money(sub)}</span></div>
-        <div class="row"><span>Tax (${state.tax}%)</span><span class="mono">${money(tax)}</span></div>
+        <div class="row"><span>Tax (${d.tax}%)</span><span class="mono">${money(tax)}</span></div>
         <div class="row g"><span>Total</span><span class="mono">${money(total)}</span></div>
-        <div class="row"><span>Deposit to reserve install (${state.deposit}%)</span><span class="mono">${money(dep)}</span></div>
+        <div class="row"><span>Deposit to reserve install (${d.deposit}%)</span><span class="mono">${money(dep)}</span></div>
       </div>
-
       <div class="doc-note">
-        ${state.system === 'permanent'
+        ${d.system === 'permanent'
           ? 'Permanent system includes color-matched track, commercial-grade RGBW nodes, smart controller, and the Glowline app — thousands of scenes for every holiday, no ladders ever again.'
           : 'Seasonal service includes professional install, all materials, mid-season service, and takedown with tidy off-season storage of your custom-cut set.'}
         Workmanship &amp; LED warranty included. Pricing reflects the roofline shown above.
       </div>
-
       <div class="doc-sign">
         <div class="line">Customer signature &amp; date</div>
-        <div class="line" data-slot="company2">${escapeHtml(c.company || 'Your Company')}</div>
-      </div>`;
-    el.proposalBody.appendChild(doc);
+        <div class="line">${escapeHtml(c.company || 'Your Company')}</div>
+      </div>
+    </div>`;
+  }
 
-    // live-bind customer fields into the document
+  function openProposal() {
+    const custForm = document.getElementById('customerFormTpl').content.cloneNode(true);
+    el.proposalBody.innerHTML = '';
+    el.proposalBody.appendChild(custForm);
+    const holder = document.createElement('div');
+    holder.innerHTML = docHTML(docData());
+    el.proposalBody.appendChild(holder.firstElementChild);
+
+    // live-bind customer fields → re-render the document on each edit
     el.proposalBody.querySelectorAll('.cust-form input').forEach((inp) => {
-      const key = inp.dataset.c; inp.value = c[key] || '';
+      const key = inp.dataset.c; inp.value = state.customer[key] || '';
       inp.addEventListener('input', () => {
-        c[key] = inp.value;
-        if (key === 'company') { setSlot('company', inp.value || 'Your Company'); setSlot('company2', inp.value || 'Your Company'); }
-        else if (key === 'name') setSlot('name', inp.value || '—');
-        else if (key === 'address') setSlot('address', inp.value);
-        else if (key === 'expiry') setSlot('expiry', inp.value || '14 days');
+        state.customer[key] = inp.value;
+        const doc = el.proposalBody.querySelector('.doc');
+        const fresh = document.createElement('div'); fresh.innerHTML = docHTML(docData());
+        doc.replaceWith(fresh.firstElementChild);
         persistDraft();
       });
     });
-    function setSlot(name, val) { const n = doc.querySelector(`[data-slot="${name}"]`); if (n) n.textContent = val; }
-
     el.proposalScrim.hidden = false;
+  }
+
+  /* ---------- shareable read-only proposal link (no backend) ---------- */
+  $('#btnShare').addEventListener('click', shareProposal);
+
+  async function shareProposal() {
+    let url;
+    try {
+      const enc = await encodeShare(docData());
+      url = location.origin + location.pathname + '#p=' + enc;
+    } catch (e) { toast('Could not build share link'); return; }
+    try { await navigator.clipboard.writeText(url); toast('Share link copied — send it to your customer', true); return; }
+    catch (e) { /* clipboard blocked — fall back to manual copy */ }
+    try { window.prompt('Copy this proposal link:', url); }
+    catch (e) { toast('Share link ready — copy is blocked in this view'); }
+  }
+
+  // gzip (native CompressionStream) → base64url, with a plain-base64 fallback
+  async function encodeShare(obj) {
+    const json = JSON.stringify(obj);
+    if (typeof CompressionStream === 'function') {
+      const cs = new CompressionStream('gzip');
+      const buf = await new Response(new Blob([json]).stream().pipeThrough(cs)).arrayBuffer();
+      return 'g' + b64urlFromBytes(new Uint8Array(buf));
+    }
+    return 'r' + b64urlFromBytes(new TextEncoder().encode(json));
+  }
+  async function decodeShare(str) {
+    const tag = str[0], body = str.slice(1);
+    const bytes = bytesFromB64url(body);
+    if (tag === 'g' && typeof DecompressionStream === 'function') {
+      const ds = new DecompressionStream('gzip');
+      const text = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).text();
+      return JSON.parse(text);
+    }
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  function b64urlFromBytes(bytes) {
+    let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function bytesFromB64url(b64) {
+    const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+    const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+
+  function toast(msg, good) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.hidden = false; t.classList.toggle('good', !!good);
+    requestAnimationFrame(() => t.classList.add('show'));
+    clearTimeout(toast._t); toast._t = setTimeout(() => {
+      t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 220);
+    }, 2600);
+  }
+
+  // full-page, customer-facing proposal opened from a #p= link
+  async function renderShared(enc) {
+    let d;
+    try { d = await decodeShare(enc); } catch (e) { return false; }
+    document.querySelector('.topbar').style.display = 'none';
+    document.querySelector('.workspace').style.display = 'none';
+    const co = (d.customer && d.customer.company) || 'Your lighting pro';
+    const view = document.getElementById('sharedView');
+    view.hidden = false;
+    view.innerHTML = `
+      <div class="shared-top">
+        <div class="brand"><span class="brand-node"></span><span class="brand-word">Glowline</span></div>
+        <div style="font-size:12.5px;color:var(--frost-dim)">Proposal from <strong style="color:var(--frost)">${escapeHtml(co)}</strong></div>
+      </div>
+      <div class="shared-wrap">${docHTML(d)}</div>
+      <div id="sharedCtaWrap" class="shared-cta">
+        <button class="cta-btn" id="sharedAccept">Accept &amp; request install</button>
+        <button class="ghost-btn" id="sharedPrint">Save as PDF</button>
+      </div>
+      <div class="shared-foot">Presented with <a href="${location.origin + location.pathname}" target="_blank" rel="noopener">Glowline</a> — light design for installers.</div>`;
+    document.getElementById('sharedPrint').addEventListener('click', () => window.print());
+    document.getElementById('sharedAccept').addEventListener('click', () => {
+      document.getElementById('sharedCtaWrap').outerHTML =
+        `<div class="shared-accepted">Thanks — ${escapeHtml((d.customer && d.customer.name) || 'you')} accepted this proposal. ${escapeHtml(co)} will reach out to schedule your install.</div>`;
+    });
+    return true;
   }
 
   function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
@@ -695,7 +793,7 @@
   /* =========================================================================
      BOOT
      ========================================================================= */
-  function boot() {
+  function initEditor() {
     el.img.src = state.imgSrc;
     // restore last draft if present
     try {
@@ -704,6 +802,13 @@
     } catch (e) {}
     state.lineItems = defaultLineItems();
     render();
+  }
+  function boot() {
+    if (location.hash.indexOf('#p=') === 0) {
+      renderShared(location.hash.slice(3)).then((ok) => { if (!ok) initEditor(); });
+      return;
+    }
+    initEditor();
   }
   el.img.addEventListener('load', () => { /* image ready; overlay uses viewBox so no action needed */ });
   boot();
