@@ -32,7 +32,8 @@
     scene: 'warm',
     night: false,
     tool: 'trace',
-    points: [],                 // [{x,y}] in image-intrinsic coords
+    runs: [{ id: 'r1', points: [] }], // each run = one continuous roof section [{x,y}] in image coords
+    activeRun: 0,
     scale: { pxPerFoot: DEMO_PX_PER_FOOT, calib: [] }, // calib: up to 2 pts while measuring
     calibrating: false,
     lineItems: [],
@@ -64,10 +65,23 @@
   const uid = () => Math.random().toString(36).slice(2, 9);
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-  function polylineFeet() {
-    if (state.points.length < 2 || !state.scale.pxPerFoot) return 0;
+  // active run's point array (what new clicks append to)
+  function activePoints() {
+    if (!state.runs[state.activeRun]) state.activeRun = state.runs.length - 1;
+    return state.runs[state.activeRun].points;
+  }
+  function totalPoints() { return state.runs.reduce((n, r) => n + r.points.length, 0); }
+  function tracedRuns() { return state.runs.filter((r) => r.points.length >= 2); }
+
+  function runPixels(pts) {
     let px = 0;
-    for (let i = 0; i < state.points.length - 1; i++) px += dist(state.points[i], state.points[i + 1]);
+    for (let i = 0; i < pts.length - 1; i++) px += dist(pts[i], pts[i + 1]);
+    return px;
+  }
+  function polylineFeet() {
+    if (!state.scale.pxPerFoot) return 0;
+    let px = 0;
+    for (const r of state.runs) if (r.points.length >= 2) px += runPixels(r.points);
     return px / state.scale.pxPerFoot;
   }
 
@@ -130,7 +144,7 @@
     renderTotals();
     el.frame.classList.toggle('is-night', state.night);
     el.stage.classList.toggle('mode-scale', state.tool === 'scale');
-    el.frame.classList.toggle('has-points', state.points.length > 0);
+    el.frame.classList.toggle('has-points', totalPoints() > 0);
     document.querySelectorAll('.tool[data-tool]').forEach((b) =>
       b.classList.toggle('is-active', b.dataset.tool === state.tool));
     $('#toolNight').classList.toggle('is-active', state.night);
@@ -164,45 +178,46 @@
     return out;
   }
 
-  // build the inner SVG markup for a trace (reused live + in the proposal hero)
-  function buildOverlayInner(points, sceneKey, opts = {}) {
-    const { handles = false, W = state.imgW } = opts;
+  // build the inner SVG markup for a set of runs (reused live + in the proposal hero)
+  function buildOverlayInner(runs, sceneKey, opts = {}) {
+    const { handles = false, W = state.imgW, activeRun = -1 } = opts;
     const scene = SCENES[sceneKey] || SCENES.warm;
     const spacing = Math.max(13, W / 62);
-    const bulbs = sampleBulbs(points, spacing);
     const twinkle = !opts.still;
+    const r = Math.max(3.2, W / 200);
 
-    let defs = `<defs>
+    const defs = `<defs>
       <filter id="gl-bloom" x="-60%" y="-60%" width="220%" height="220%">
         <feGaussianBlur stdDeviation="${Math.max(2.4, W / 320)}" />
       </filter>
     </defs>`;
 
-    const line = points.length > 1
-      ? `<polyline points="${points.map((p) => `${p.x},${p.y}`).join(' ')}"
-           fill="none" stroke="rgba(255,224,180,0.5)" stroke-width="${Math.max(1.5, W / 700)}"
-           stroke-linecap="round" stroke-linejoin="round" />` : '';
+    let lines = '', halos = '', cores = '', vhandles = '';
+    let colorIdx = 0; // continuous color cycle across all runs
 
-    // halos (blurred) then bright cores
-    const r = Math.max(3.2, W / 200);
-    const halos = bulbs.map((p, i) => {
-      const c = scene.colors[i % scene.colors.length];
-      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 2.6}" fill="${c}" opacity="0.5" filter="url(#gl-bloom)" />`;
-    }).join('');
-    const cores = bulbs.map((p, i) => {
-      const c = scene.colors[i % scene.colors.length];
-      const delay = twinkle ? ((i * 137) % 360) / 100 : 0;
-      const anim = twinkle ? ` class="bulb" style="animation-delay:${delay}s"` : '';
-      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${c}"${anim} />`
-           + `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 0.42}" fill="#fff" opacity="0.9" />`;
-    }).join('');
-
-    let vhandles = '';
-    if (handles) {
-      vhandles = points.map((p, i) =>
-        `<circle class="vhandle" data-idx="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 1.7}"
-           fill="rgba(10,14,28,.4)" stroke="#ffd7a1" stroke-width="${Math.max(1.2, W / 900)}" style="cursor:grab" />`).join('');
-    }
+    runs.forEach((run, ri) => {
+      const pts = run.points;
+      if (pts.length > 1) {
+        lines += `<polyline points="${pts.map((p) => `${p.x},${p.y}`).join(' ')}"
+          fill="none" stroke="rgba(255,224,180,0.5)" stroke-width="${Math.max(1.5, W / 700)}"
+          stroke-linecap="round" stroke-linejoin="round" />`;
+      }
+      const bulbs = sampleBulbs(pts, spacing);
+      bulbs.forEach((p) => {
+        const c = scene.colors[colorIdx % scene.colors.length]; colorIdx++;
+        halos += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 2.6}" fill="${c}" opacity="0.5" filter="url(#gl-bloom)" />`;
+        const delay = twinkle ? ((colorIdx * 137) % 360) / 100 : 0;
+        const anim = twinkle ? ` class="bulb" style="animation-delay:${delay}s"` : '';
+        cores += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${c}"${anim} />`
+               + `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 0.42}" fill="#fff" opacity="0.9" />`;
+      });
+      if (handles) {
+        const dim = activeRun >= 0 && ri !== activeRun;
+        vhandles += pts.map((p, i) =>
+          `<circle class="vhandle" data-run="${ri}" data-idx="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 1.7}"
+             fill="rgba(10,14,28,.4)" stroke="#ffd7a1" stroke-opacity="${dim ? 0.4 : 1}" stroke-width="${Math.max(1.2, W / 900)}" style="cursor:grab" />`).join('');
+      }
+    });
 
     // scale calibration marks
     let calib = '';
@@ -213,12 +228,13 @@
         calib += `<line x1="${cp[0].x}" y1="${cp[0].y}" x2="${cp[1].x}" y2="${cp[1].y}" stroke="#ffb257" stroke-width="${Math.max(1.4, W / 800)}" stroke-dasharray="6 5" />`;
     }
 
-    return defs + line + halos + cores + vhandles + calib;
+    return defs + lines + halos + cores + vhandles + calib;
   }
 
   function renderOverlay() {
     el.overlay.setAttribute('viewBox', `0 0 ${state.imgW} ${state.imgH}`);
-    el.overlay.innerHTML = buildOverlayInner(state.points, state.scene, { handles: state.tool === 'trace', W: state.imgW });
+    el.overlay.innerHTML = buildOverlayInner(state.runs, state.scene,
+      { handles: state.tool === 'trace', W: state.imgW, activeRun: state.activeRun });
   }
 
   function renderReadout() {
@@ -227,16 +243,22 @@
       el.feetNum.textContent = '—';
       el.feetSub.textContent = 'set scale to price this run';
       el.feetSub.className = 'readout-sub warn';
-    } else if (state.points.length < 2) {
+    } else if (tracedRuns().length === 0) {
       el.feetNum.textContent = '0';
       el.feetSub.textContent = 'click along the roofline to lay the lights';
       el.feetSub.className = 'readout-sub';
     } else {
       el.feetNum.textContent = Math.round(feet).toLocaleString();
-      const bulbs = sampleBulbs(state.points, Math.max(13, state.imgW / 62)).length;
-      el.feetSub.textContent = `${state.points.length} points · ~${bulbs} nodes · ${state.system} system`;
+      const bulbs = totalNodes();
+      const runs = tracedRuns().length;
+      el.feetSub.textContent = `${runs} run${runs > 1 ? 's' : ''} · ~${bulbs} nodes · ${state.system} system`;
       el.feetSub.className = 'readout-sub';
     }
+  }
+
+  function totalNodes() {
+    const spacing = Math.max(13, state.imgW / 62);
+    return state.runs.reduce((n, r) => n + (r.points.length >= 2 ? sampleBulbs(r.points, spacing).length : 0), 0);
   }
 
   function renderLineItems() {
@@ -285,12 +307,13 @@
     };
   }
 
-  let dragIdx = -1, dragMoved = false;
+  let dragRun = -1, dragIdx = -1, dragMoved = false;
 
   el.overlay.addEventListener('pointerdown', (ev) => {
     const handle = ev.target.closest('.vhandle');
     if (handle && state.tool === 'trace') {
-      dragIdx = +handle.dataset.idx; dragMoved = false;
+      dragRun = +handle.dataset.run; dragIdx = +handle.dataset.idx; dragMoved = false;
+      state.activeRun = dragRun; // grabbing a point activates its run
       el.overlay.setPointerCapture(ev.pointerId);
       ev.preventDefault();
     }
@@ -298,12 +321,12 @@
   el.overlay.addEventListener('pointermove', (ev) => {
     if (dragIdx < 0) return;
     dragMoved = true;
-    state.points[dragIdx] = toImgCoords(ev);
+    state.runs[dragRun].points[dragIdx] = toImgCoords(ev);
     syncTrackLine();
     renderOverlay(); renderReadout(); renderLineItems(); renderTotals();
   });
-  el.overlay.addEventListener('pointerup', (ev) => {
-    if (dragIdx >= 0) { dragIdx = -1; persistDraft(); }
+  el.overlay.addEventListener('pointerup', () => {
+    if (dragIdx >= 0) { dragRun = -1; dragIdx = -1; persistDraft(); }
   });
 
   el.overlay.addEventListener('click', (ev) => {
@@ -313,7 +336,7 @@
 
     if (state.tool === 'scale') { handleScaleClick(p); return; }
 
-    state.points.push(p);
+    activePoints().push(p);
     syncTrackLine();
     render();
   });
@@ -370,12 +393,24 @@
   /* ---------- toolbar + controls wiring ---------- */
   $('#toolTrace').addEventListener('click', () => setTool('trace'));
   $('#toolScale').addEventListener('click', () => setTool('scale'));
+  $('#toolNewRun').addEventListener('click', newRun);
   $('#toolNight').addEventListener('click', () => { state.night = !state.night; render(); });
   $('#toolUndo').addEventListener('click', undo);
   $('#toolClear').addEventListener('click', () => {
-    if (!state.points.length) return;
-    state.points = []; syncTrackLine(); render();
+    if (!totalPoints()) return;
+    state.runs = [{ id: uid(), points: [] }]; state.activeRun = 0;
+    syncTrackLine(); render();
   });
+
+  // start a fresh, separate roof section (e.g. the detached garage)
+  function newRun() {
+    setTool('trace');
+    // reuse a trailing empty run if one exists
+    const last = state.runs[state.runs.length - 1];
+    if (last && last.points.length === 0) { state.activeRun = state.runs.length - 1; }
+    else { state.runs.push({ id: uid(), points: [] }); state.activeRun = state.runs.length - 1; }
+    render();
+  }
 
   function undo() {
     if (state.tool === 'scale' && state.calibrating) {
@@ -383,7 +418,14 @@
       if (!state.scale.calib.length) state.calibrating = false;
       renderOverlay(); return;
     }
-    state.points.pop(); syncTrackLine(); render();
+    const pts = activePoints();
+    if (pts.length) pts.pop();
+    // if the active run is now empty and it isn't the only run, drop it
+    if (pts.length === 0 && state.runs.length > 1) {
+      state.runs.splice(state.activeRun, 1);
+      state.activeRun = Math.max(0, state.activeRun - 1);
+    }
+    syncTrackLine(); render();
   }
 
   el.scenes.addEventListener('click', (ev) => {
@@ -435,7 +477,8 @@
       const im = new Image();
       im.onload = () => {
         state.imgSrc = reader.result; state.imgW = im.naturalWidth; state.imgH = im.naturalHeight;
-        state.isDemo = false; state.points = []; state.scale.pxPerFoot = null; state.night = false;
+        state.isDemo = false; state.runs = [{ id: uid(), points: [] }]; state.activeRun = 0;
+        state.scale.pxPerFoot = null; state.night = false;
         el.img.src = state.imgSrc;
         setTool('scale'); // real photo → must calibrate scale first
         syncTrackLine(); render();
@@ -450,6 +493,7 @@
     if (/input|textarea/i.test(document.activeElement.tagName)) return;
     if (ev.key === 't') setTool('trace');
     else if (ev.key === 's') setTool('scale');
+    else if (ev.key === 'r') newRun();
     else if (ev.key === 'n') { state.night = !state.night; render(); }
     else if (ev.key === 'Backspace') { ev.preventDefault(); undo(); }
   });
@@ -469,7 +513,7 @@
     const feet = Math.round(polylineFeet());
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-    const heroInner = buildOverlayInner(state.points, state.scene, { handles: false, still: false, W: state.imgW });
+    const heroInner = buildOverlayInner(state.runs, state.scene, { handles: false, still: false, W: state.imgW });
     const rows = state.lineItems.map((l) => {
       const q = l.unit ? `${l.qty || 0} ${l.unit} × $${l.rate}` : 'Flat rate';
       return `<tr><td><strong>${escapeHtml(l.label)}</strong><div class="desc">${q}</div></td>
@@ -559,9 +603,9 @@
       id: state.id || (state.id = uid()),
       projectName: state.projectName, imgSrc: state.imgSrc, imgW: state.imgW, imgH: state.imgH,
       isDemo: state.isDemo, system: state.system, scene: state.scene, night: state.night,
-      points: state.points, scale: { pxPerFoot: state.scale.pxPerFoot },
+      runs: state.runs, activeRun: state.activeRun, scale: { pxPerFoot: state.scale.pxPerFoot },
       lineItems: state.lineItems, tax: state.tax, deposit: state.deposit, customer: state.customer,
-      savedAt: Date.now(),
+      savedAt: Date.now(), v: 2,
     };
   }
 
@@ -577,10 +621,14 @@
     Object.assign(state, {
       id: snap.id, projectName: snap.projectName, imgSrc: snap.imgSrc, imgW: snap.imgW, imgH: snap.imgH,
       isDemo: snap.isDemo, system: snap.system, scene: snap.scene, night: snap.night,
-      points: snap.points || [], tax: snap.tax, deposit: snap.deposit,
+      activeRun: snap.activeRun || 0, tax: snap.tax, deposit: snap.deposit,
       customer: snap.customer || state.customer,
       lineItems: snap.lineItems || [],
     });
+    // migrate v1 drafts (single `points` array) → runs
+    state.runs = snap.runs || (snap.points ? [{ id: uid(), points: snap.points }] : [{ id: uid(), points: [] }]);
+    if (!state.runs.length) state.runs = [{ id: uid(), points: [] }];
+    state.activeRun = Math.min(state.activeRun, state.runs.length - 1);
     state.scale.pxPerFoot = snap.scale ? snap.scale.pxPerFoot : null;
     el.img.src = state.imgSrc;
     el.projectName.value = state.projectName;
@@ -603,7 +651,7 @@
   function setList(l) { try { localStorage.setItem(LIST_KEY, JSON.stringify(l)); } catch (e) {} }
 
   function saveCurrentToList() {
-    if (state.points.length < 2) return; // nothing worth saving yet
+    if (tracedRuns().length === 0) return; // nothing worth saving yet
     const list = getList();
     const snap = snapshot();
     const i = list.findIndex((x) => x.id === snap.id);
@@ -628,8 +676,14 @@
     }).join('');
   }
   function estimateFeet(s) {
-    if (!s.points || s.points.length < 2 || !s.scale || !s.scale.pxPerFoot) return '—';
-    let px = 0; for (let i = 0; i < s.points.length - 1; i++) px += Math.hypot(s.points[i].x - s.points[i + 1].x, s.points[i].y - s.points[i + 1].y);
+    if (!s.scale || !s.scale.pxPerFoot) return '—';
+    const runs = s.runs || (s.points ? [{ points: s.points }] : []);
+    let px = 0;
+    for (const run of runs) {
+      const pts = run.points || [];
+      for (let i = 0; i < pts.length - 1; i++) px += Math.hypot(pts[i].x - pts[i + 1].x, pts[i].y - pts[i + 1].y);
+    }
+    if (!px) return '—';
     return Math.round(px / s.scale.pxPerFoot);
   }
   el.savedList.addEventListener('click', (ev) => {
