@@ -1,0 +1,12 @@
+{
+  "name": "glowline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual sales-closer for permanent & holiday lighting installers — trace a roofline, preview the glow, price the job.",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "serve": "npx --yes serve -l 4173 ."
+  },
+  "keywords": ["holiday-lighting", "permanent-lighting", "quoting", "proposals", "home-services"],
+  "license": "UNLICENSED"
+}

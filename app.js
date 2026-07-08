@@ -1,0 +1,711 @@
+/* ===========================================================================
+   GLOWLINE — app.js
+   A visual sales-closer for permanent / holiday lighting installers.
+   Trace a roofline on a photo → preview the glow in any season → priced proposal.
+   Pure front-end, no build step, no backend. State persists to localStorage.
+   =========================================================================== */
+(() => {
+  'use strict';
+
+  /* ---------- lighting scenes (drive the trace colors) ---------- */
+  const SCENES = {
+    warm:    { name: 'Warm White',     colors: ['#ffd7a1'],                       swatch: '#ffd7a1' },
+    cool:    { name: 'Cool White',     colors: ['#dbe9ff'],                       swatch: '#dbe9ff' },
+    xmas:    { name: 'Christmas',      colors: ['#ff3b3b', '#2ee06b'],            swatch: '#ff3b3b' },
+    hallow:  { name: 'Halloween',      colors: ['#ff7a1a', '#9a4dff'],           swatch: '#ff7a1a' },
+    july4:   { name: 'Fourth of July', colors: ['#ff4d4d', '#f4f7ff', '#4d7dff'],swatch: '#4d7dff' },
+    fall:    { name: 'Fall Amber',     colors: ['#ff9e2c', '#c8412b', '#ffcf6b'],swatch: '#ff9e2c' },
+  };
+
+  /* ---------- default demo house (inline SVG → data URI) ---------- */
+  const DEMO_W = 1200, DEMO_H = 760;
+  const DEMO_HOUSE = demoHouseDataURI();
+  const DEMO_PX_PER_FOOT = 21.5; // demo frontage ≈ 56 ft across the image
+
+  /* ---------- state ---------- */
+  const state = {
+    projectName: 'Untitled roofline',
+    imgSrc: DEMO_HOUSE,
+    imgW: DEMO_W, imgH: DEMO_H,
+    isDemo: true,
+    system: 'permanent',
+    scene: 'warm',
+    night: false,
+    tool: 'trace',
+    points: [],                 // [{x,y}] in image-intrinsic coords
+    scale: { pxPerFoot: DEMO_PX_PER_FOOT, calib: [] }, // calib: up to 2 pts while measuring
+    calibrating: false,
+    lineItems: [],
+    tax: 8,
+    deposit: 50,
+    customer: { company: '', name: '', address: '', expiry: '14 days' },
+  };
+
+  /* ---------- element refs ---------- */
+  const $ = (s) => document.querySelector(s);
+  const el = {
+    stage: $('#stage'), overlay: $('#overlay'), img: $('#houseImg'),
+    frame: $('#canvasFrame'), veil: $('#nightVeil'), hint: $('#stageHint'),
+    scenes: $('.scenes'), projectName: $('#projectName'),
+    feetNum: $('#feetNum'), feetSub: $('#feetSub'),
+    systemSeg: $('#systemSeg'), systemNote: $('#systemNote'),
+    lineItems: $('#lineItems'), addLine: $('#addLine'),
+    taxRate: $('#taxRate'), depositPct: $('#depositPct'),
+    tSubtotal: $('#tSubtotal'), tTax: $('#tTax'), tTotal: $('#tTotal'),
+    tDeposit: $('#tDeposit'), tDepositLabel: $('#tDepositLabel'),
+    scaleBanner: $('#scaleBanner'), scaleBannerText: $('#scaleBannerText'),
+    photoInput: $('#photoInput'),
+    proposalScrim: $('#proposalScrim'), proposalBody: $('#proposalBody'),
+    savedScrim: $('#savedScrim'), savedList: $('#savedList'),
+  };
+
+  /* ---------- helpers ---------- */
+  const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  function polylineFeet() {
+    if (state.points.length < 2 || !state.scale.pxPerFoot) return 0;
+    let px = 0;
+    for (let i = 0; i < state.points.length - 1; i++) px += dist(state.points[i], state.points[i + 1]);
+    return px / state.scale.pxPerFoot;
+  }
+
+  /* ---------- line items ---------- */
+  function defaultLineItems() {
+    const feet = Math.round(polylineFeet());
+    const items = [{
+      id: uid(), kind: 'track', auto: true, unit: 'ft',
+      label: 'Permanent LED channel — installed', qty: feet, rate: 28,
+    }];
+    if (state.system === 'permanent') {
+      items.push({ id: uid(), kind: 'controller', auto: false, unit: '',
+        label: 'Smart controller + Glowline app', qty: null, rate: 199 });
+    }
+    return items;
+  }
+
+  function syncTrackLine() {
+    const feet = Math.round(polylineFeet());
+    const track = state.lineItems.find((l) => l.kind === 'track');
+    if (track) track.qty = feet;
+  }
+
+  function applySystem() {
+    const track = state.lineItems.find((l) => l.kind === 'track');
+    if (state.system === 'permanent') {
+      if (track && track.auto) {
+        track.label = 'Permanent LED channel — installed';
+        if (track.rate === 6) track.rate = 28;
+      }
+      if (!state.lineItems.find((l) => l.kind === 'controller')) {
+        const idx = state.lineItems.findIndex((l) => l.kind === 'track');
+        state.lineItems.splice(idx + 1, 0, { id: uid(), kind: 'controller', auto: false, unit: '',
+          label: 'Smart controller + Glowline app', qty: null, rate: 199 });
+      }
+      el.systemNote.textContent = 'Year-round track, every holiday from one app. Installed once, hidden by day.';
+    } else {
+      if (track && track.auto) {
+        track.label = 'Seasonal install + winter takedown';
+        if (track.rate === 28) track.rate = 6;
+      }
+      state.lineItems = state.lineItems.filter((l) => l.kind !== 'controller');
+      el.systemNote.textContent = 'Hung each fall, taken down after the holidays. Priced per foot, per season.';
+    }
+  }
+
+  function lineAmount(l) {
+    return l.unit ? (l.qty || 0) * l.rate : l.rate;
+  }
+  function subtotal() { return state.lineItems.reduce((s, l) => s + lineAmount(l), 0); }
+
+  /* =========================================================================
+     RENDER
+     ========================================================================= */
+  function render() {
+    renderScenes();
+    renderOverlay();
+    renderReadout();
+    renderLineItems();
+    renderTotals();
+    el.frame.classList.toggle('is-night', state.night);
+    el.stage.classList.toggle('mode-scale', state.tool === 'scale');
+    el.frame.classList.toggle('has-points', state.points.length > 0);
+    document.querySelectorAll('.tool[data-tool]').forEach((b) =>
+      b.classList.toggle('is-active', b.dataset.tool === state.tool));
+    $('#toolNight').classList.toggle('is-active', state.night);
+    persistDraft();
+  }
+
+  function renderScenes() {
+    if (el.scenes.children.length) {
+      [...el.scenes.children].forEach((c) => c.classList.toggle('is-active', c.dataset.scene === state.scene));
+      return;
+    }
+    el.scenes.innerHTML = Object.entries(SCENES).map(([k, s]) =>
+      `<button class="scene-chip ${k === state.scene ? 'is-active' : ''}" data-scene="${k}" style="--c:${s.swatch}">
+         <span class="swatch"></span>${s.name}</button>`).join('');
+  }
+
+  // sample evenly-spaced bulb positions along the traced polyline
+  function sampleBulbs(points, spacing) {
+    if (points.length < 2) return points.slice();
+    const out = [{ x: points[0].x, y: points[0].y }];
+    let residual = spacing;
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i], b = points[i + 1];
+      const dx = b.x - a.x, dy = b.y - a.y, segLen = Math.hypot(dx, dy);
+      let d = residual;
+      while (d < segLen) { const t = d / segLen; out.push({ x: a.x + dx * t, y: a.y + dy * t }); d += spacing; }
+      residual = d - segLen;
+    }
+    const last = points[points.length - 1];
+    if (dist(out[out.length - 1], last) > spacing * 0.4) out.push({ x: last.x, y: last.y });
+    return out;
+  }
+
+  // build the inner SVG markup for a trace (reused live + in the proposal hero)
+  function buildOverlayInner(points, sceneKey, opts = {}) {
+    const { handles = false, W = state.imgW } = opts;
+    const scene = SCENES[sceneKey] || SCENES.warm;
+    const spacing = Math.max(13, W / 62);
+    const bulbs = sampleBulbs(points, spacing);
+    const twinkle = !opts.still;
+
+    let defs = `<defs>
+      <filter id="gl-bloom" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="${Math.max(2.4, W / 320)}" />
+      </filter>
+    </defs>`;
+
+    const line = points.length > 1
+      ? `<polyline points="${points.map((p) => `${p.x},${p.y}`).join(' ')}"
+           fill="none" stroke="rgba(255,224,180,0.5)" stroke-width="${Math.max(1.5, W / 700)}"
+           stroke-linecap="round" stroke-linejoin="round" />` : '';
+
+    // halos (blurred) then bright cores
+    const r = Math.max(3.2, W / 200);
+    const halos = bulbs.map((p, i) => {
+      const c = scene.colors[i % scene.colors.length];
+      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 2.6}" fill="${c}" opacity="0.5" filter="url(#gl-bloom)" />`;
+    }).join('');
+    const cores = bulbs.map((p, i) => {
+      const c = scene.colors[i % scene.colors.length];
+      const delay = twinkle ? ((i * 137) % 360) / 100 : 0;
+      const anim = twinkle ? ` class="bulb" style="animation-delay:${delay}s"` : '';
+      return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${c}"${anim} />`
+           + `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 0.42}" fill="#fff" opacity="0.9" />`;
+    }).join('');
+
+    let vhandles = '';
+    if (handles) {
+      vhandles = points.map((p, i) =>
+        `<circle class="vhandle" data-idx="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 1.7}"
+           fill="rgba(10,14,28,.4)" stroke="#ffd7a1" stroke-width="${Math.max(1.2, W / 900)}" style="cursor:grab" />`).join('');
+    }
+
+    // scale calibration marks
+    let calib = '';
+    if (state.calibrating && state.scale.calib.length) {
+      const cp = state.scale.calib;
+      calib += cp.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="${r * 1.3}" fill="none" stroke="#ffb257" stroke-width="${Math.max(1.4, W / 700)}" />`).join('');
+      if (cp.length === 2)
+        calib += `<line x1="${cp[0].x}" y1="${cp[0].y}" x2="${cp[1].x}" y2="${cp[1].y}" stroke="#ffb257" stroke-width="${Math.max(1.4, W / 800)}" stroke-dasharray="6 5" />`;
+    }
+
+    return defs + line + halos + cores + vhandles + calib;
+  }
+
+  function renderOverlay() {
+    el.overlay.setAttribute('viewBox', `0 0 ${state.imgW} ${state.imgH}`);
+    el.overlay.innerHTML = buildOverlayInner(state.points, state.scene, { handles: state.tool === 'trace', W: state.imgW });
+  }
+
+  function renderReadout() {
+    const feet = polylineFeet();
+    if (!state.scale.pxPerFoot) {
+      el.feetNum.textContent = '—';
+      el.feetSub.textContent = 'set scale to price this run';
+      el.feetSub.className = 'readout-sub warn';
+    } else if (state.points.length < 2) {
+      el.feetNum.textContent = '0';
+      el.feetSub.textContent = 'click along the roofline to lay the lights';
+      el.feetSub.className = 'readout-sub';
+    } else {
+      el.feetNum.textContent = Math.round(feet).toLocaleString();
+      const bulbs = sampleBulbs(state.points, Math.max(13, state.imgW / 62)).length;
+      el.feetSub.textContent = `${state.points.length} points · ~${bulbs} nodes · ${state.system} system`;
+      el.feetSub.className = 'readout-sub';
+    }
+  }
+
+  function renderLineItems() {
+    el.lineItems.innerHTML = state.lineItems.map((l) => {
+      const amt = lineAmount(l);
+      const meta = l.unit
+        ? `<div class="li-meta">
+             <input data-li="${l.id}" data-f="qty" value="${l.qty ?? 0}" ${l.auto ? 'readonly title="from the traced roofline"' : ''} /> ${l.unit}
+             × $<input data-li="${l.id}" data-f="rate" value="${l.rate}" />/${l.unit}
+           </div>`
+        : `<div class="li-meta">flat · $<input data-li="${l.id}" data-f="rate" value="${l.rate}" /></div>`;
+      return `<div class="li ${l.auto ? 'auto' : ''}">
+        <div class="li-main">
+          <input class="li-label" data-li="${l.id}" data-f="label" value="${escapeAttr(l.label)}" />
+          ${meta}
+        </div>
+        <div class="li-amount">${money(amt)}</div>
+        <button class="li-del" data-del="${l.id}" title="Remove">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTotals() {
+    const sub = subtotal();
+    const tax = sub * (state.tax / 100);
+    const total = sub + tax;
+    const dep = total * (state.deposit / 100);
+    el.tSubtotal.textContent = money(sub);
+    el.tTax.textContent = money(tax);
+    el.tTotal.textContent = money(total);
+    el.tDeposit.textContent = money(dep);
+    el.tDepositLabel.textContent = `Due to book (${state.deposit}%)`;
+  }
+
+  function escapeAttr(s) { return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  /* =========================================================================
+     INTERACTIONS
+     ========================================================================= */
+  // convert a pointer event to image-intrinsic coords
+  function toImgCoords(ev) {
+    const r = el.overlay.getBoundingClientRect();
+    return {
+      x: (ev.clientX - r.left) / r.width * state.imgW,
+      y: (ev.clientY - r.top) / r.height * state.imgH,
+    };
+  }
+
+  let dragIdx = -1, dragMoved = false;
+
+  el.overlay.addEventListener('pointerdown', (ev) => {
+    const handle = ev.target.closest('.vhandle');
+    if (handle && state.tool === 'trace') {
+      dragIdx = +handle.dataset.idx; dragMoved = false;
+      el.overlay.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    }
+  });
+  el.overlay.addEventListener('pointermove', (ev) => {
+    if (dragIdx < 0) return;
+    dragMoved = true;
+    state.points[dragIdx] = toImgCoords(ev);
+    syncTrackLine();
+    renderOverlay(); renderReadout(); renderLineItems(); renderTotals();
+  });
+  el.overlay.addEventListener('pointerup', (ev) => {
+    if (dragIdx >= 0) { dragIdx = -1; persistDraft(); }
+  });
+
+  el.overlay.addEventListener('click', (ev) => {
+    if (dragMoved) { dragMoved = false; return; }        // ignore click that ended a drag
+    if (ev.target.closest('.vhandle')) return;
+    const p = toImgCoords(ev);
+
+    if (state.tool === 'scale') { handleScaleClick(p); return; }
+
+    state.points.push(p);
+    syncTrackLine();
+    render();
+  });
+
+  function handleScaleClick(p) {
+    if (!state.calibrating) { state.calibrating = true; state.scale.calib = []; }
+    state.scale.calib.push(p);
+    if (state.scale.calib.length === 2) {
+      showScaleInput();
+    } else {
+      el.scaleBannerText.textContent = 'Now click the other end of that reference.';
+    }
+    renderOverlay();
+  }
+
+  function showScaleInput() {
+    const px = dist(state.scale.calib[0], state.scale.calib[1]);
+    el.scaleBanner.innerHTML =
+      `<span class="scale-dot"></span>
+       <span>That reference is</span>
+       <input id="scaleFeet" type="number" min="1" step="0.5" value="16"
+         style="width:64px;background:rgba(0,0,0,.35);border:1px solid rgba(255,178,87,.5);border-radius:8px;color:#fff;font-family:var(--font-mono);padding:5px 8px;text-align:right" />
+       <span>feet</span>
+       <button id="scaleSet" class="cta-btn" style="padding:7px 14px">Set scale</button>`;
+    const input = $('#scaleFeet'); input.focus(); input.select();
+    const commit = () => {
+      const feet = parseFloat(input.value);
+      if (feet > 0) {
+        state.scale.pxPerFoot = px / feet;
+        state.calibrating = false; state.scale.calib = [];
+        setTool('trace');
+        el.scaleBanner.hidden = true;
+        syncTrackLine();
+        render();
+      }
+    };
+    $('#scaleSet').addEventListener('click', commit);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(); });
+  }
+
+  function setTool(t) {
+    state.tool = t;
+    if (t === 'scale') {
+      state.calibrating = false; state.scale.calib = [];
+      el.scaleBanner.hidden = false;
+      el.scaleBanner.innerHTML = `<span class="scale-dot"></span><span id="scaleBannerText">Click two points on something you know the length of — a garage door (~16 ft), the front door (~7 ft).</span>`;
+      el.scaleBannerText = $('#scaleBannerText');
+    } else {
+      el.scaleBanner.hidden = true;
+    }
+    render();
+  }
+
+  /* ---------- toolbar + controls wiring ---------- */
+  $('#toolTrace').addEventListener('click', () => setTool('trace'));
+  $('#toolScale').addEventListener('click', () => setTool('scale'));
+  $('#toolNight').addEventListener('click', () => { state.night = !state.night; render(); });
+  $('#toolUndo').addEventListener('click', undo);
+  $('#toolClear').addEventListener('click', () => {
+    if (!state.points.length) return;
+    state.points = []; syncTrackLine(); render();
+  });
+
+  function undo() {
+    if (state.tool === 'scale' && state.calibrating) {
+      state.scale.calib.pop();
+      if (!state.scale.calib.length) state.calibrating = false;
+      renderOverlay(); return;
+    }
+    state.points.pop(); syncTrackLine(); render();
+  }
+
+  el.scenes.addEventListener('click', (ev) => {
+    const chip = ev.target.closest('.scene-chip');
+    if (!chip) return;
+    state.scene = chip.dataset.scene;
+    if (!state.night) state.night = true; // scenes read best at night
+    render();
+  });
+
+  el.systemSeg.addEventListener('click', (ev) => {
+    const opt = ev.target.closest('.seg-opt'); if (!opt) return;
+    state.system = opt.dataset.system;
+    [...el.systemSeg.children].forEach((c) => c.classList.toggle('is-active', c === opt));
+    applySystem(); render();
+  });
+
+  // line-item edits (event delegation)
+  el.lineItems.addEventListener('input', (ev) => {
+    const t = ev.target; const id = t.dataset.li; if (!id) return;
+    const l = state.lineItems.find((x) => x.id === id); if (!l) return;
+    const f = t.dataset.f;
+    if (f === 'label') l.label = t.value;
+    else if (f === 'qty') l.qty = parseFloat(t.value) || 0;
+    else if (f === 'rate') l.rate = parseFloat(t.value) || 0;
+    // update just this row's amount + totals (avoid re-render stealing focus)
+    const row = t.closest('.li'); if (row) row.querySelector('.li-amount').textContent = money(lineAmount(l));
+    renderTotals(); persistDraft();
+  });
+  el.lineItems.addEventListener('click', (ev) => {
+    const id = ev.target.dataset.del; if (!id) return;
+    state.lineItems = state.lineItems.filter((l) => l.id !== id);
+    renderLineItems(); renderTotals(); persistDraft();
+  });
+  el.addLine.addEventListener('click', () => {
+    state.lineItems.push({ id: uid(), kind: 'custom', auto: false, unit: '', label: 'New line item', qty: null, rate: 0 });
+    renderLineItems(); renderTotals(); persistDraft();
+  });
+
+  el.taxRate.addEventListener('input', () => { state.tax = parseFloat(el.taxRate.value) || 0; renderTotals(); persistDraft(); });
+  el.depositPct.addEventListener('input', () => { state.deposit = parseFloat(el.depositPct.value) || 0; renderTotals(); persistDraft(); });
+  el.projectName.addEventListener('input', () => { state.projectName = el.projectName.value; persistDraft(); });
+
+  // photo upload
+  el.photoInput.addEventListener('change', (ev) => {
+    const file = ev.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        state.imgSrc = reader.result; state.imgW = im.naturalWidth; state.imgH = im.naturalHeight;
+        state.isDemo = false; state.points = []; state.scale.pxPerFoot = null; state.night = false;
+        el.img.src = state.imgSrc;
+        setTool('scale'); // real photo → must calibrate scale first
+        syncTrackLine(); render();
+      };
+      im.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // keyboard shortcuts
+  document.addEventListener('keydown', (ev) => {
+    if (/input|textarea/i.test(document.activeElement.tagName)) return;
+    if (ev.key === 't') setTool('trace');
+    else if (ev.key === 's') setTool('scale');
+    else if (ev.key === 'n') { state.night = !state.night; render(); }
+    else if (ev.key === 'Backspace') { ev.preventDefault(); undo(); }
+  });
+
+  /* =========================================================================
+     PROPOSAL
+     ========================================================================= */
+  $('#btnProposal').addEventListener('click', openProposal);
+  $('#btnCloseProposal').addEventListener('click', () => { el.proposalScrim.hidden = true; });
+  $('#btnPrint').addEventListener('click', () => window.print());
+  el.proposalScrim.addEventListener('click', (e) => { if (e.target === el.proposalScrim) el.proposalScrim.hidden = true; });
+
+  function openProposal() {
+    const c = state.customer;
+    const custForm = document.getElementById('customerFormTpl').content.cloneNode(true);
+    const sub = subtotal(), tax = sub * (state.tax / 100), total = sub + tax, dep = total * (state.deposit / 100);
+    const feet = Math.round(polylineFeet());
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const heroInner = buildOverlayInner(state.points, state.scene, { handles: false, still: false, W: state.imgW });
+    const rows = state.lineItems.map((l) => {
+      const q = l.unit ? `${l.qty || 0} ${l.unit} × $${l.rate}` : 'Flat rate';
+      return `<tr><td><strong>${escapeHtml(l.label)}</strong><div class="desc">${q}</div></td>
+              <td class="r">${money(lineAmount(l))}</td></tr>`;
+    }).join('');
+
+    el.proposalBody.innerHTML = '';
+    el.proposalBody.appendChild(custForm);
+    const doc = document.createElement('div');
+    doc.className = 'doc';
+    doc.style.webkitPrintColorAdjust = 'exact';
+    doc.style.printColorAdjust = 'exact';
+    doc.innerHTML = `
+      <div class="doc-top">
+        <div>
+          <div class="doc-co" data-slot="company">${escapeHtml(c.company || 'Your Company')}</div>
+          <div class="doc-badge"><span class="dot"></span>Permanent · Holiday Lighting Proposal</div>
+        </div>
+        <div class="doc-meta">
+          <div>Prepared for <strong data-slot="name">${escapeHtml(c.name || '—')}</strong></div>
+          <div data-slot="address">${escapeHtml(c.address || '')}</div>
+          <div>${today}</div>
+          <div>Good through <strong data-slot="expiry">${escapeHtml(c.expiry || '14 days')}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-hero">
+        <div style="position:relative;line-height:0">
+          <img src="${state.imgSrc}" style="width:100%;display:block" />
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,9,20,.5),rgba(6,9,20,.7));mix-blend-mode:multiply"></div>
+          <svg viewBox="0 0 ${state.imgW} ${state.imgH}" preserveAspectRatio="none"
+               style="position:absolute;inset:0;width:100%;height:100%">${heroInner}</svg>
+        </div>
+        <div class="doc-hero-cap">${SCENES[state.scene].name} · ${feet} ft of roofline</div>
+      </div>
+
+      <h2>Scope &amp; investment</h2>
+      <table class="doc-table"><tbody>${rows}</tbody></table>
+
+      <div class="doc-tot">
+        <div class="row"><span>Subtotal</span><span class="mono">${money(sub)}</span></div>
+        <div class="row"><span>Tax (${state.tax}%)</span><span class="mono">${money(tax)}</span></div>
+        <div class="row g"><span>Total</span><span class="mono">${money(total)}</span></div>
+        <div class="row"><span>Deposit to reserve install (${state.deposit}%)</span><span class="mono">${money(dep)}</span></div>
+      </div>
+
+      <div class="doc-note">
+        ${state.system === 'permanent'
+          ? 'Permanent system includes color-matched track, commercial-grade RGBW nodes, smart controller, and the Glowline app — thousands of scenes for every holiday, no ladders ever again.'
+          : 'Seasonal service includes professional install, all materials, mid-season service, and takedown with tidy off-season storage of your custom-cut set.'}
+        Workmanship &amp; LED warranty included. Pricing reflects the roofline shown above.
+      </div>
+
+      <div class="doc-sign">
+        <div class="line">Customer signature &amp; date</div>
+        <div class="line" data-slot="company2">${escapeHtml(c.company || 'Your Company')}</div>
+      </div>`;
+    el.proposalBody.appendChild(doc);
+
+    // live-bind customer fields into the document
+    el.proposalBody.querySelectorAll('.cust-form input').forEach((inp) => {
+      const key = inp.dataset.c; inp.value = c[key] || '';
+      inp.addEventListener('input', () => {
+        c[key] = inp.value;
+        if (key === 'company') { setSlot('company', inp.value || 'Your Company'); setSlot('company2', inp.value || 'Your Company'); }
+        else if (key === 'name') setSlot('name', inp.value || '—');
+        else if (key === 'address') setSlot('address', inp.value);
+        else if (key === 'expiry') setSlot('expiry', inp.value || '14 days');
+        persistDraft();
+      });
+    });
+    function setSlot(name, val) { const n = doc.querySelector(`[data-slot="${name}"]`); if (n) n.textContent = val; }
+
+    el.proposalScrim.hidden = false;
+  }
+
+  function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+  /* =========================================================================
+     SAVE / LOAD (localStorage)
+     ========================================================================= */
+  const DRAFT_KEY = 'glowline.draft';
+  const LIST_KEY = 'glowline.projects';
+
+  function snapshot() {
+    return {
+      id: state.id || (state.id = uid()),
+      projectName: state.projectName, imgSrc: state.imgSrc, imgW: state.imgW, imgH: state.imgH,
+      isDemo: state.isDemo, system: state.system, scene: state.scene, night: state.night,
+      points: state.points, scale: { pxPerFoot: state.scale.pxPerFoot },
+      lineItems: state.lineItems, tax: state.tax, deposit: state.deposit, customer: state.customer,
+      savedAt: Date.now(),
+    };
+  }
+
+  let draftTimer = null;
+  function persistDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshot())); } catch (e) {}
+    }, 250);
+  }
+
+  function loadInto(snap) {
+    Object.assign(state, {
+      id: snap.id, projectName: snap.projectName, imgSrc: snap.imgSrc, imgW: snap.imgW, imgH: snap.imgH,
+      isDemo: snap.isDemo, system: snap.system, scene: snap.scene, night: snap.night,
+      points: snap.points || [], tax: snap.tax, deposit: snap.deposit,
+      customer: snap.customer || state.customer,
+      lineItems: snap.lineItems || [],
+    });
+    state.scale.pxPerFoot = snap.scale ? snap.scale.pxPerFoot : null;
+    el.img.src = state.imgSrc;
+    el.projectName.value = state.projectName;
+    el.taxRate.value = state.tax; el.depositPct.value = state.deposit;
+    [...el.systemSeg.children].forEach((c) => c.classList.toggle('is-active', c.dataset.system === state.system));
+    setTool('trace');
+    render();
+  }
+
+  // "Saved" drawer
+  $('#btnSaved').addEventListener('click', () => {
+    saveCurrentToList();
+    renderSavedList();
+    el.savedScrim.hidden = false;
+  });
+  $('#btnCloseSaved').addEventListener('click', () => { el.savedScrim.hidden = true; });
+  el.savedScrim.addEventListener('click', (e) => { if (e.target === el.savedScrim) el.savedScrim.hidden = true; });
+
+  function getList() { try { return JSON.parse(localStorage.getItem(LIST_KEY)) || []; } catch (e) { return []; } }
+  function setList(l) { try { localStorage.setItem(LIST_KEY, JSON.stringify(l)); } catch (e) {} }
+
+  function saveCurrentToList() {
+    if (state.points.length < 2) return; // nothing worth saving yet
+    const list = getList();
+    const snap = snapshot();
+    const i = list.findIndex((x) => x.id === snap.id);
+    if (i >= 0) list[i] = snap; else list.unshift(snap);
+    setList(list.slice(0, 40));
+  }
+
+  function renderSavedList() {
+    const list = getList();
+    if (!list.length) { el.savedList.innerHTML = `<div class="saved-empty">No saved proposals yet.<br>Trace a roofline, then hit Saved to keep it here.</div>`; return; }
+    el.savedList.innerHTML = list.map((s) => {
+      const feet = estimateFeet(s);
+      const when = new Date(s.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `<div class="saved-card">
+        <img class="saved-thumb" src="${s.imgSrc}" alt="" />
+        <div class="saved-info">
+          <h4>${escapeHtml(s.projectName || 'Untitled')}</h4>
+          <p>${feet} ft · ${SCENES[s.scene] ? SCENES[s.scene].name : 'Warm'} · ${when}</p>
+        </div>
+        <button class="saved-open" data-open="${s.id}">Open</button>
+      </div>`;
+    }).join('');
+  }
+  function estimateFeet(s) {
+    if (!s.points || s.points.length < 2 || !s.scale || !s.scale.pxPerFoot) return '—';
+    let px = 0; for (let i = 0; i < s.points.length - 1; i++) px += Math.hypot(s.points[i].x - s.points[i + 1].x, s.points[i].y - s.points[i + 1].y);
+    return Math.round(px / s.scale.pxPerFoot);
+  }
+  el.savedList.addEventListener('click', (ev) => {
+    const id = ev.target.dataset.open; if (!id) return;
+    const snap = getList().find((x) => x.id === id); if (!snap) return;
+    loadInto(snap); el.savedScrim.hidden = true;
+  });
+
+  /* =========================================================================
+     BOOT
+     ========================================================================= */
+  function boot() {
+    el.img.src = state.imgSrc;
+    // restore last draft if present
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) { const snap = JSON.parse(raw); if (snap && snap.imgSrc) { loadInto(snap); return; } }
+    } catch (e) {}
+    state.lineItems = defaultLineItems();
+    render();
+  }
+  el.img.addEventListener('load', () => { /* image ready; overlay uses viewBox so no action needed */ });
+  boot();
+
+  /* =========================================================================
+     DEMO HOUSE — an inline dusk-lit suburban home with a clean roofline
+     ========================================================================= */
+  function demoHouseDataURI() {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${DEMO_W}' height='${DEMO_H}' viewBox='0 0 ${DEMO_W} ${DEMO_H}'>
+      <defs>
+        <linearGradient id='sky' x1='0' y1='0' x2='0' y2='1'>
+          <stop offset='0' stop-color='#243056'/><stop offset='0.55' stop-color='#3a3f63'/><stop offset='1' stop-color='#6b5a72'/>
+        </linearGradient>
+        <linearGradient id='wall' x1='0' y1='0' x2='0' y2='1'>
+          <stop offset='0' stop-color='#e9e2d4'/><stop offset='1' stop-color='#cdc4b2'/>
+        </linearGradient>
+        <linearGradient id='roof' x1='0' y1='0' x2='0' y2='1'>
+          <stop offset='0' stop-color='#4a4550'/><stop offset='1' stop-color='#332f39'/>
+        </linearGradient>
+        <linearGradient id='lawn' x1='0' y1='0' x2='0' y2='1'>
+          <stop offset='0' stop-color='#3b4a3a'/><stop offset='1' stop-color='#2a3630'/>
+        </linearGradient>
+      </defs>
+      <rect width='${DEMO_W}' height='${DEMO_H}' fill='url(#sky)'/>
+      <circle cx='980' cy='150' r='46' fill='#f3ead0' opacity='0.85'/>
+      <circle cx='980' cy='150' r='70' fill='#f3ead0' opacity='0.12'/>
+      ${starField()}
+      <rect y='560' width='${DEMO_W}' height='200' fill='url(#lawn)'/>
+      <!-- main house body -->
+      <rect x='250' y='330' width='560' height='250' fill='url(#wall)'/>
+      <!-- main gable roof -->
+      <polygon points='230,335 530,190 830,335' fill='url(#roof)'/>
+      <polygon points='230,335 530,190 530,205 246,346' fill='#5a5560' opacity='0.6'/>
+      <!-- garage wing (lower) -->
+      <rect x='770' y='420' width='300' height='160' fill='url(#wall)'/>
+      <polygon points='752,425 920,330 1088,425' fill='url(#roof)'/>
+      <!-- door + windows (warm interior glow) -->
+      <rect x='500' y='450' width='60' height='130' fill='#5a4632'/>
+      <rect x='300' y='400' width='70' height='80' fill='#ffd98a' opacity='0.85'/>
+      <rect x='690' y='400' width='70' height='80' fill='#ffd98a' opacity='0.85'/>
+      <rect x='860' y='470' width='120' height='90' fill='#3a3f4a'/>
+      <line x1='920' y1='470' x2='920' y2='560' stroke='#2a2e38' stroke-width='4'/>
+      <!-- chimney -->
+      <rect x='430' y='230' width='40' height='80' fill='#3f3a44'/>
+      <!-- trees -->
+      <circle cx='150' cy='500' r='70' fill='#2c3a30'/><rect x='142' y='500' width='16' height='70' fill='#3a2f28'/>
+      <circle cx='1120' cy='500' r='60' fill='#2c3a30'/><rect x='1113' y='500' width='14' height='70' fill='#3a2f28'/>
+    </svg>`;
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+  function starField() {
+    let s = '';
+    for (let i = 0; i < 60; i++) {
+      const x = Math.round(Math.random() * DEMO_W), y = Math.round(Math.random() * 300), r = (Math.random() * 1.3 + 0.3).toFixed(1);
+      s += `<circle cx='${x}' cy='${y}' r='${r}' fill='#fff' opacity='${(Math.random() * 0.6 + 0.2).toFixed(2)}'/>`;
+    }
+    return s;
+  }
+})();

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glowline — sell the house before you light it</title>
+  <meta name="description" content="Trace a customer's roofline on a photo, preview it glowing in any season, and hand them a priced proposal — the kitchen-table closer for permanent lighting installers." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Archivo+Expanded:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand" aria-label="Glowline">
+      <span class="brand-node" aria-hidden="true"></span>
+      <span class="brand-word">Glowline</span>
+    </div>
+
+    <div class="project-name">
+      <input id="projectName" value="Untitled roofline" aria-label="Project name" spellcheck="false" />
+    </div>
+
+    <nav class="scenes" aria-label="Lighting scenes">
+      <!-- scene chips injected by JS -->
+    </nav>
+
+    <div class="topbar-actions">
+      <button id="btnSaved" class="ghost-btn" title="Saved proposals">Saved</button>
+      <button id="btnProposal" class="cta-btn">Build proposal</button>
+    </div>
+  </header>
+
+  <!-- ============ WORKSPACE ============ -->
+  <main class="workspace">
+    <!-- ---- STAGE ---- -->
+    <section class="stage" id="stage">
+      <div class="stage-inner" id="stageInner">
+        <div class="canvas-frame" id="canvasFrame">
+          <!-- house image (or default illustrated demo) -->
+          <img id="houseImg" alt="Customer's house" draggable="false" />
+          <div class="night-veil" id="nightVeil"></div>
+          <!-- SVG overlay for tracing + glowing nodes -->
+          <svg id="overlay" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
+          <div class="stage-hint" id="stageHint">
+            <p><strong>Click along the roofline</strong> to lay the lights.</p>
+            <p class="dim">Each click drops a point. The glow follows the eaves.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- floating stage toolbar -->
+      <div class="stage-tools" role="toolbar" aria-label="Canvas tools">
+        <button class="tool" id="toolTrace" data-tool="trace" title="Trace roofline (T)">
+          <span class="tool-glyph">⌇</span><span class="tool-label">Trace</span>
+        </button>
+        <button class="tool" id="toolScale" data-tool="scale" title="Set scale (S)">
+          <span class="tool-glyph">⊢</span><span class="tool-label">Scale</span>
+        </button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="toolNight" title="Toggle night (N)">
+          <span class="tool-glyph">☾</span><span class="tool-label">Night</span>
+        </button>
+        <button class="tool" id="toolUndo" title="Undo point (⌫)">
+          <span class="tool-glyph">↺</span><span class="tool-label">Undo</span>
+        </button>
+        <button class="tool" id="toolClear" title="Clear run">
+          <span class="tool-glyph">⊘</span><span class="tool-label">Clear</span>
+        </button>
+        <span class="tool-sep"></span>
+        <label class="tool tool-upload" title="Use a real photo">
+          <span class="tool-glyph">▣</span><span class="tool-label">Photo</span>
+          <input type="file" id="photoInput" accept="image/*" hidden />
+        </label>
+      </div>
+
+      <!-- scale calibration banner -->
+      <div class="scale-banner" id="scaleBanner" hidden>
+        <span class="scale-dot"></span>
+        <span id="scaleBannerText">Click two points on something you know the length of — a garage door, the front door.</span>
+      </div>
+    </section>
+
+    <!-- ---- ESTIMATE RAIL ---- -->
+    <aside class="rail" id="rail">
+      <div class="rail-scroll">
+
+        <div class="readout">
+          <div class="readout-main">
+            <span class="readout-num" id="feetNum">0</span>
+            <span class="readout-unit">ft</span>
+          </div>
+          <div class="readout-sub" id="feetSub">roofline traced · set scale to price it</div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-head">System</div>
+          <div class="seg" id="systemSeg" role="tablist">
+            <button class="seg-opt is-active" data-system="permanent" role="tab">Permanent</button>
+            <button class="seg-opt" data-system="seasonal" role="tab">Seasonal</button>
+          </div>
+          <p class="field-note" id="systemNote">Year-round track, every holiday from one app. Installed once.</p>
+        </div>
+
+        <div class="field-group">
+          <div class="field-head">Price build-up <span class="field-head-hint">edit anything</span></div>
+          <div class="lineitems" id="lineItems"><!-- injected --></div>
+          <button class="add-line" id="addLine">+ Add line item</button>
+        </div>
+
+        <div class="field-group tight">
+          <div class="knob-row">
+            <label>Tax</label>
+            <div class="knob"><input id="taxRate" type="number" min="0" max="30" step="0.25" value="8" /><span>%</span></div>
+          </div>
+          <div class="knob-row">
+            <label>Deposit to book</label>
+            <div class="knob"><input id="depositPct" type="number" min="0" max="100" step="5" value="50" /><span>%</span></div>
+          </div>
+        </div>
+
+        <div class="totals">
+          <div class="totals-row"><span>Subtotal</span><span id="tSubtotal" class="mono">$0</span></div>
+          <div class="totals-row"><span>Tax</span><span id="tTax" class="mono">$0</span></div>
+          <div class="totals-row grand"><span>Total</span><span id="tTotal" class="mono">$0</span></div>
+          <div class="totals-row deposit"><span id="tDepositLabel">Due to book (50%)</span><span id="tDeposit" class="mono">$0</span></div>
+        </div>
+
+      </div>
+    </aside>
+  </main>
+
+  <!-- ============ PROPOSAL OVERLAY ============ -->
+  <div class="sheet-scrim" id="proposalScrim" hidden>
+    <div class="sheet" id="proposalSheet" role="dialog" aria-modal="true" aria-label="Proposal">
+      <div class="sheet-bar">
+        <div class="sheet-bar-left">
+          <span class="brand-node small" aria-hidden="true"></span>
+          <span>Proposal preview</span>
+        </div>
+        <div class="sheet-bar-right">
+          <button class="ghost-btn" id="btnPrint">Print / PDF</button>
+          <button class="ghost-btn" id="btnCloseProposal">Close</button>
+        </div>
+      </div>
+      <div class="sheet-body" id="proposalBody"><!-- injected --></div>
+    </div>
+  </div>
+
+  <!-- ============ SAVED DRAWER ============ -->
+  <div class="sheet-scrim" id="savedScrim" hidden>
+    <div class="drawer" id="savedDrawer" role="dialog" aria-modal="true" aria-label="Saved proposals">
+      <div class="drawer-head">
+        <span>Saved proposals</span>
+        <button class="ghost-btn" id="btnCloseSaved">Close</button>
+      </div>
+      <div class="drawer-list" id="savedList"><!-- injected --></div>
+    </div>
+  </div>
+
+  <!-- customer details captured lazily when building a proposal -->
+  <template id="customerFormTpl">
+    <div class="cust-form">
+      <div class="cust-grid">
+        <label>Your company<input data-c="company" placeholder="North Ridge Lighting Co." /></label>
+        <label>Customer name<input data-c="name" placeholder="The Bergstroms" /></label>
+        <label>Property address<input data-c="address" placeholder="118 Maple Court" /></label>
+        <label>Good through<input data-c="expiry" placeholder="14 days" /></label>
+      </div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
