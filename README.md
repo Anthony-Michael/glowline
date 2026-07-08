@@ -5,6 +5,8 @@ permanent & holiday lighting installers: trace a customer's roofline on a photo 
 *their* house, preview it glowing in any season, and hand them a priced, branded
 proposal — in one flow, on one screen.
 
+**▶ Live site: https://anthony-michael.github.io/glowline/** · **the app: [/app.html](https://anthony-michael.github.io/glowline/app.html)**
+
 ![status](https://img.shields.io/badge/stage-MVP-ffb257) ![type](https://img.shields.io/badge/stack-zero--build%20web-10162a)
 
 ---
@@ -55,7 +57,8 @@ Everything runs client-side. No accounts, no backend, no build step.
 
 ## Run it
 
-Any static file server works. For example:
+The live demo is at **https://anthony-michael.github.io/glowline/** (auto-deployed from
+`main` via GitHub Actions). To run locally, any static file server works. For example:
 
 ```bash
 cd glowline
@@ -74,9 +77,11 @@ Cloudflare Pages / GitHub Pages — it's just static files.
 
 | File | Role |
 |------|------|
-| `index.html` | Structure — topbar, canvas stage, estimate rail, proposal & saved sheets |
+| `index.html` | Marketing front door — hero (animated lit house), pricing, installer waitlist |
+| `app.html` | The app — topbar, canvas stage, estimate rail, proposal & saved sheets |
 | `styles.css` | Design system — midnight palette, incandescent glow, Archivo/Hanken/Plex type |
-| `app.js` | Everything else — tracing, scale, live glow render, pricing, proposal, persistence |
+| `app.js` | Everything else — tracing, scale, live glow render, pricing, proposal, sharing, persistence |
+| `.github/workflows/deploy.yml` | Auto-deploy to GitHub Pages on push to `main` |
 
 ## Roadmap to a paid product
 

@@ -679,7 +679,7 @@
         <button class="cta-btn" id="sharedAccept">Accept &amp; request install</button>
         <button class="ghost-btn" id="sharedPrint">Save as PDF</button>
       </div>
-      <div class="shared-foot">Presented with <a href="${location.origin + location.pathname}" target="_blank" rel="noopener">Glowline</a> — light design for installers.</div>`;
+      <div class="shared-foot">Presented with <a href="${location.origin + location.pathname.replace(/[^/]*$/, '')}" target="_blank" rel="noopener">Glowline</a> — light design for installers.</div>`;
     document.getElementById('sharedPrint').addEventListener('click', () => window.print());
     document.getElementById('sharedAccept').addEventListener('click', () => {
       document.getElementById('sharedCtaWrap').outerHTML =

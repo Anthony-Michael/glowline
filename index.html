@@ -3,184 +3,328 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Glowline — sell the house before you light it</title>
-  <meta name="description" content="Trace a customer's roofline on a photo, preview it glowing in any season, and hand them a priced proposal — the kitchen-table closer for permanent lighting installers." />
+  <title>Glowline — close the lighting sale on the doorstep</title>
+  <meta name="description" content="Glowline is the doorstep sales tool for permanent & holiday lighting installers: trace the customer's roofline on a photo, preview it glowing in every season, and send a priced proposal in one flow." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23ffd7a1'/%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ffb257' stroke-opacity='.5' stroke-width='2'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Archivo+Expanded:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Archivo+Expanded:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#0a0e1c; --ink-1:#10162a; --ink-2:#161e38; --ink-3:#1e2846;
+      --hair:rgba(190,210,255,.10); --hair-2:rgba(190,210,255,.18);
+      --glow:#ffd7a1; --glow-hot:#ffb257; --frost:#eaf1ff; --frost-dim:#aab7d6; --muted:#6f7da0; --good:#7fe0b0;
+      --font-display:"Archivo Expanded","Archivo",system-ui,sans-serif;
+      --font-body:"Hanken Grotesk",system-ui,-apple-system,sans-serif;
+      --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{
+      margin:0; font-family:var(--font-body); color:var(--frost);
+      background:radial-gradient(1200px 700px at 78% -10%, #172248 0%, transparent 55%),
+        radial-gradient(900px 600px at 0% 40%, #131a35 0%, transparent 50%), var(--ink);
+      -webkit-font-smoothing:antialiased; line-height:1.55;
+    }
+    a{color:inherit;}
+    .wrap{max-width:1120px; margin:0 auto; padding:0 24px;}
+
+    /* nav */
+    nav{display:flex; align-items:center; justify-content:space-between; padding:20px 0;}
+    .brand{display:flex; align-items:center; gap:10px;}
+    .brand-node{width:13px;height:13px;border-radius:50%;background:var(--glow);box-shadow:0 0 0 3px rgba(255,197,120,.15),0 0 14px 3px var(--glow-hot);animation:pulse 3.2s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,197,120,.12),0 0 10px 2px var(--glow-hot);}50%{box-shadow:0 0 0 4px rgba(255,197,120,.22),0 0 22px 6px var(--glow-hot);}}
+    .brand-word{font-family:var(--font-display);font-weight:800;letter-spacing:.04em;font-size:19px;}
+    .nav-links{display:flex; align-items:center; gap:26px; font-size:14px; color:var(--frost-dim);}
+    .nav-links a{text-decoration:none;}
+    .nav-links a:hover{color:var(--frost);}
+    .btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;transition:.16s;border:1px solid transparent;cursor:pointer;}
+    .btn-primary{color:#2a1600;background:linear-gradient(180deg,var(--glow),var(--glow-hot));box-shadow:0 6px 18px -6px var(--glow-hot),inset 0 1px 0 rgba(255,255,255,.4);padding:11px 20px;}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 26px -8px var(--glow-hot),inset 0 1px 0 rgba(255,255,255,.5);}
+    .btn-ghost{color:var(--frost);border-color:var(--hair-2);padding:11px 18px;background:transparent;}
+    .btn-ghost:hover{border-color:var(--frost-dim);}
+    .nav-links .btn-ghost{padding:9px 16px;}
+
+    /* hero */
+    .hero{display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center; padding:48px 0 70px;}
+    .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--glow);border:1px solid rgba(255,178,87,.3);background:rgba(255,178,87,.07);padding:6px 12px;border-radius:100px;}
+    h1{font-family:var(--font-display);font-weight:800;font-size:clamp(34px,5vw,58px);line-height:1.02;letter-spacing:-.01em;margin:22px 0 0;}
+    h1 .lit{color:var(--glow);text-shadow:0 0 34px rgba(255,197,120,.45);}
+    .sub{font-size:clamp(16px,2vw,19px);color:var(--frost-dim);margin:20px 0 0;max-width:35ch;}
+    .hero-cta{display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;}
+    .hero-note{margin-top:16px;font-size:13px;color:var(--muted);}
+
+    /* animated house */
+    .scene{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--hair);box-shadow:0 30px 80px -30px rgba(0,0,0,.8);background:#070a14;aspect-ratio:5/4;}
+    .scene svg{display:block;width:100%;height:100%;}
+    .roofline{stroke:rgba(255,224,180,.5);stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 1.6s ease .3s forwards;}
+    @keyframes draw{to{stroke-dashoffset:0;}}
+    .lb{opacity:0;animation:pop .4s ease forwards, tw 3.4s ease-in-out infinite;}
+    .lb-a{animation:pop .4s ease forwards, seasonA 13s linear 2.2s infinite, tw 3.4s ease-in-out infinite;}
+    .lb-b{animation:pop .4s ease forwards, seasonB 13s linear 2.2s infinite, tw 3.4s ease-in-out infinite;}
+    @keyframes pop{to{opacity:1;}}
+    @keyframes tw{0%,100%{opacity:.82;}50%{opacity:1;}}
+    @keyframes seasonA{0%,15%{fill:#ffd7a1}22%,40%{fill:#ff3b3b}47%,65%{fill:#ff7a1a}72%,90%{fill:#4d7dff}100%{fill:#ffd7a1}}
+    @keyframes seasonB{0%,15%{fill:#ffd7a1}22%,40%{fill:#2ee06b}47%,65%{fill:#9a4dff}72%,90%{fill:#f4f7ff}100%{fill:#ffd7a1}}
+    .scene-tag{position:absolute;left:16px;bottom:14px;font-family:var(--font-mono);font-size:12px;color:var(--frost);background:rgba(10,14,28,.6);backdrop-filter:blur(4px);padding:6px 12px;border-radius:100px;border:1px solid var(--hair);}
+
+    /* stats strip */
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair);border:1px solid var(--hair);border-radius:16px;overflow:hidden;margin-bottom:70px;}
+    .stat{background:var(--ink-1);padding:26px 24px;}
+    .stat-num{font-family:var(--font-mono);font-size:30px;font-weight:600;color:var(--glow);}
+    .stat-lab{font-size:13.5px;color:var(--frost-dim);margin-top:4px;}
+
+    section{padding:56px 0;}
+    .kicker{font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--glow-hot);}
+    h2{font-family:var(--font-display);font-weight:700;font-size:clamp(26px,3.4vw,38px);line-height:1.08;margin:14px 0 0;letter-spacing:-.01em;}
+    .lead{color:var(--frost-dim);font-size:17px;max-width:60ch;margin-top:16px;}
+
+    /* steps */
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;}
+    .step{border:1px solid var(--hair);border-radius:16px;padding:26px;background:linear-gradient(180deg,rgba(22,30,56,.4),rgba(10,14,28,.2));}
+    .step-n{font-family:var(--font-mono);font-size:13px;color:var(--glow-hot);}
+    .step h3{font-family:var(--font-display);font-size:18px;font-weight:700;margin:12px 0 8px;}
+    .step p{color:var(--frost-dim);font-size:14.5px;margin:0;}
+
+    /* problem callout */
+    .callout{border:1px solid var(--hair-2);border-radius:20px;padding:40px;background:radial-gradient(600px 300px at 100% 0%,rgba(255,178,87,.08),transparent 60%),var(--ink-1);}
+
+    /* features */
+    .feat{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:40px;}
+    .fcard{border:1px solid var(--hair);border-radius:14px;padding:22px 24px;background:rgba(255,255,255,.02);}
+    .fcard h3{font-family:var(--font-display);font-size:16px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:10px;}
+    .fdot{width:9px;height:9px;border-radius:50%;background:var(--glow);box-shadow:0 0 10px var(--glow-hot);flex-shrink:0;}
+    .fcard p{color:var(--frost-dim);font-size:14.5px;margin:0;}
+
+    /* pricing */
+    .price{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:40px;}
+    .pcard{border:1px solid var(--hair);border-radius:18px;padding:32px;background:var(--ink-1);}
+    .pcard.feature{border-color:rgba(255,178,87,.4);box-shadow:0 0 40px -14px var(--glow-hot);}
+    .p-name{font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:.02em;}
+    .p-amt{font-family:var(--font-mono);font-size:40px;font-weight:600;margin:14px 0 2px;color:var(--frost);}
+    .p-amt span{font-size:16px;color:var(--muted);}
+    .p-desc{color:var(--frost-dim);font-size:14px;margin-bottom:18px;}
+    .p-list{list-style:none;padding:0;margin:0 0 22px;}
+    .p-list li{font-size:14px;color:var(--frost-dim);padding:7px 0 7px 26px;position:relative;}
+    .p-list li::before{content:"";position:absolute;left:0;top:12px;width:12px;height:12px;border-radius:50%;background:rgba(127,224,176,.15);box-shadow:inset 0 0 0 1.5px var(--good);}
+
+    /* waitlist */
+    .waitlist{border:1px solid var(--hair-2);border-radius:22px;padding:48px;text-align:center;background:radial-gradient(700px 300px at 50% 0%,rgba(255,197,120,.1),transparent 60%),var(--ink-1);}
+    .wl-form{display:flex;gap:12px;max-width:440px;margin:26px auto 0;}
+    .wl-form input{flex:1;background:rgba(0,0,0,.3);border:1px solid var(--hair-2);border-radius:11px;padding:14px 16px;color:var(--frost);font-size:15px;font-family:inherit;}
+    .wl-form input:focus{outline:none;border-color:var(--glow-hot);}
+    .wl-ok{color:var(--good);font-weight:600;margin-top:24px;font-size:16px;}
+    .wl-fine{color:var(--muted);font-size:12.5px;margin-top:14px;}
+
+    footer{border-top:1px solid var(--hair);padding:34px 0;margin-top:60px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+
+    @media (max-width:860px){
+      .hero{grid-template-columns:1fr;gap:30px;padding-top:24px;}
+      .scene{order:-1;}
+      .stats,.steps,.feat,.price{grid-template-columns:1fr;}
+      .nav-links a:not(.btn){display:none;}
+      .callout,.waitlist{padding:30px;}
+      .wl-form{flex-direction:column;}
+    }
+    @media (prefers-reduced-motion:reduce){
+      *{animation:none!important;}
+      .roofline{stroke-dashoffset:0;} .lb,.lb-a,.lb-b{opacity:1;}
+    }
+  </style>
 </head>
 <body>
-  <!-- ============ TOP BAR ============ -->
-  <header class="topbar">
-    <div class="brand" aria-label="Glowline">
-      <span class="brand-node" aria-hidden="true"></span>
-      <span class="brand-word">Glowline</span>
-    </div>
-
-    <div class="project-name">
-      <input id="projectName" value="Untitled roofline" aria-label="Project name" spellcheck="false" />
-    </div>
-
-    <nav class="scenes" aria-label="Lighting scenes">
-      <!-- scene chips injected by JS -->
+  <div class="wrap">
+    <nav>
+      <div class="brand"><span class="brand-node"></span><span class="brand-word">Glowline</span></div>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="app.html" class="btn btn-ghost">Open the app</a>
+      </div>
     </nav>
 
-    <div class="topbar-actions">
-      <button id="btnSaved" class="ghost-btn" title="Saved proposals">Saved</button>
-      <button id="btnProposal" class="cta-btn">Build proposal</button>
-    </div>
-  </header>
-
-  <!-- ============ WORKSPACE ============ -->
-  <main class="workspace">
-    <!-- ---- STAGE ---- -->
-    <section class="stage" id="stage">
-      <div class="stage-inner" id="stageInner">
-        <div class="canvas-frame" id="canvasFrame">
-          <!-- house image (or default illustrated demo) -->
-          <img id="houseImg" alt="Customer's house" draggable="false" />
-          <div class="night-veil" id="nightVeil"></div>
-          <!-- SVG overlay for tracing + glowing nodes -->
-          <svg id="overlay" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
-          <div class="stage-hint" id="stageHint">
-            <p><strong>Click along the roofline</strong> to lay the lights.</p>
-            <p class="dim">Each click drops a point. The glow follows the eaves.</p>
-          </div>
+    <!-- HERO -->
+    <header class="hero">
+      <div>
+        <span class="eyebrow"><span class="brand-node" style="width:8px;height:8px;animation:none"></span>For permanent &amp; holiday lighting pros</span>
+        <h1>Close the <span class="lit">$6,000</span> sale on the doorstep.</h1>
+        <p class="sub">Trace the customer's roofline on a photo of <em>their</em> house, light it up in every season, and hand them a priced proposal — before you leave the driveway.</p>
+        <div class="hero-cta">
+          <a href="app.html" class="btn btn-primary">Open the live demo →</a>
+          <a href="#waitlist" class="btn btn-ghost">Join the installer waitlist</a>
         </div>
+        <p class="hero-note">No signup. Runs in your browser. Try it on the built-in demo house or upload a real photo.</p>
       </div>
 
-      <!-- floating stage toolbar -->
-      <div class="stage-tools" role="toolbar" aria-label="Canvas tools">
-        <button class="tool" id="toolTrace" data-tool="trace" title="Trace roofline (T)">
-          <span class="tool-glyph">⌇</span><span class="tool-label">Trace</span>
-        </button>
-        <button class="tool" id="toolScale" data-tool="scale" title="Set scale (S)">
-          <span class="tool-glyph">⊢</span><span class="tool-label">Scale</span>
-        </button>
-        <button class="tool" id="toolNewRun" title="Start a separate roof section (R)">
-          <span class="tool-glyph">＋</span><span class="tool-label">New run</span>
-        </button>
-        <span class="tool-sep"></span>
-        <button class="tool" id="toolNight" title="Toggle night (N)">
-          <span class="tool-glyph">☾</span><span class="tool-label">Night</span>
-        </button>
-        <button class="tool" id="toolUndo" title="Undo point (⌫)">
-          <span class="tool-glyph">↺</span><span class="tool-label">Undo</span>
-        </button>
-        <button class="tool" id="toolClear" title="Clear run">
-          <span class="tool-glyph">⊘</span><span class="tool-label">Clear</span>
-        </button>
-        <span class="tool-sep"></span>
-        <label class="tool tool-upload" title="Use a real photo">
-          <span class="tool-glyph">▣</span><span class="tool-label">Photo</span>
-          <input type="file" id="photoInput" accept="image/*" hidden />
-        </label>
+      <!-- animated lit house -->
+      <div class="scene" aria-label="A house lighting up through the seasons">
+        <svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg" role="img">
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#243056"/><stop offset=".6" stop-color="#3a3f63"/><stop offset="1" stop-color="#5a4f68"/></linearGradient>
+            <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9e2d4"/><stop offset="1" stop-color="#cabfad"/></linearGradient>
+            <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4550"/><stop offset="1" stop-color="#302c37"/></linearGradient>
+            <filter id="bloom" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"/></filter>
+          </defs>
+          <rect width="500" height="400" fill="url(#sky)"/>
+          <circle cx="420" cy="70" r="26" fill="#f3ead0" opacity=".85"/><circle cx="420" cy="70" r="42" fill="#f3ead0" opacity=".12"/>
+          <g id="stars"></g>
+          <rect y="300" width="500" height="100" fill="#2c3a30"/>
+          <!-- main house -->
+          <rect x="110" y="180" width="230" height="120" fill="url(#wall)"/>
+          <polygon points="96,184 225,96 354,184" fill="url(#roof)"/>
+          <!-- garage -->
+          <rect x="330" y="220" width="120" height="80" fill="url(#wall)"/>
+          <polygon points="318,224 390,168 462,224" fill="url(#roof)"/>
+          <!-- door + windows -->
+          <rect x="205" y="240" width="34" height="60" fill="#5a4632"/>
+          <rect x="135" y="210" width="34" height="36" fill="#ffd98a" opacity=".85"/>
+          <rect x="280" y="210" width="34" height="36" fill="#ffd98a" opacity=".85"/>
+          <!-- rooflines: draw-on -->
+          <path class="roofline" d="M96,184 L225,96 L354,184"/>
+          <path class="roofline" style="animation-delay:.6s" d="M318,224 L390,168 L462,224"/>
+          <!-- bulbs injected by script -->
+          <g id="bulbHalos" filter="url(#bloom)"></g>
+          <g id="bulbs"></g>
+        </svg>
+        <div class="scene-tag" id="sceneTag">every holiday · one install</div>
       </div>
+    </header>
+  </div>
 
-      <!-- scale calibration banner -->
-      <div class="scale-banner" id="scaleBanner" hidden>
-        <span class="scale-dot"></span>
-        <span id="scaleBannerText">Click two points on something you know the length of — a garage door, the front door.</span>
+  <div class="wrap">
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat"><div class="stat-num">45–60%</div><div class="stat-lab">YoY growth in permanent lighting — 7× faster than landscaping</div></div>
+      <div class="stat"><div class="stat-num">~$6,000</div><div class="stat-lab">Average project, with margins above the trade average</div></div>
+      <div class="stat"><div class="stat-num">1 tool</div><div class="stat-lab">Design, price, and send — instead of stitching a mockup app to a CRM</div></div>
+    </div>
+
+    <!-- PROBLEM -->
+    <section>
+      <div class="callout">
+        <span class="kicker">The doorstep problem</span>
+        <h2>The sale is won or lost at the kitchen table.</h2>
+        <p class="lead">Homeowners can't picture $6,000 of lights from a verbal pitch. Today installers juggle a separate mockup app to show the look and a CRM to price and schedule — so the moment that actually closes the deal is split across two tools and rarely happens on the spot. Glowline collapses design, pricing, and the proposal into one screen you can run from the driveway.</p>
       </div>
     </section>
 
-    <!-- ---- ESTIMATE RAIL ---- -->
-    <aside class="rail" id="rail">
-      <div class="rail-scroll">
-
-        <div class="readout">
-          <div class="readout-main">
-            <span class="readout-num" id="feetNum">0</span>
-            <span class="readout-unit">ft</span>
-          </div>
-          <div class="readout-sub" id="feetSub">roofline traced · set scale to price it</div>
-        </div>
-
-        <div class="field-group">
-          <div class="field-head">System</div>
-          <div class="seg" id="systemSeg" role="tablist">
-            <button class="seg-opt is-active" data-system="permanent" role="tab">Permanent</button>
-            <button class="seg-opt" data-system="seasonal" role="tab">Seasonal</button>
-          </div>
-          <p class="field-note" id="systemNote">Year-round track, every holiday from one app. Installed once.</p>
-        </div>
-
-        <div class="field-group">
-          <div class="field-head">Price build-up <span class="field-head-hint">edit anything</span></div>
-          <div class="lineitems" id="lineItems"><!-- injected --></div>
-          <button class="add-line" id="addLine">+ Add line item</button>
-        </div>
-
-        <div class="field-group tight">
-          <div class="knob-row">
-            <label>Tax</label>
-            <div class="knob"><input id="taxRate" type="number" min="0" max="30" step="0.25" value="8" /><span>%</span></div>
-          </div>
-          <div class="knob-row">
-            <label>Deposit to book</label>
-            <div class="knob"><input id="depositPct" type="number" min="0" max="100" step="5" value="50" /><span>%</span></div>
-          </div>
-        </div>
-
-        <div class="totals">
-          <div class="totals-row"><span>Subtotal</span><span id="tSubtotal" class="mono">$0</span></div>
-          <div class="totals-row"><span>Tax</span><span id="tTax" class="mono">$0</span></div>
-          <div class="totals-row grand"><span>Total</span><span id="tTotal" class="mono">$0</span></div>
-          <div class="totals-row deposit"><span id="tDepositLabel">Due to book (50%)</span><span id="tDeposit" class="mono">$0</span></div>
-        </div>
-
+    <!-- HOW -->
+    <section id="how">
+      <span class="kicker">How it works</span>
+      <h2>Three taps from photo to signed proposal.</h2>
+      <div class="steps">
+        <div class="step"><div class="step-n">01 — Trace</div><h3>Draw the roofline</h3><p>Click along the eaves on a photo of the house. Add a separate run for the garage or porch. Drag any point to fine-tune.</p></div>
+        <div class="step"><div class="step-n">02 — Preview</div><h3>Light every season</h3><p>Warm white, Christmas, Halloween, Fourth of July — the roofline glows on their actual house so they can see it before they buy.</p></div>
+        <div class="step"><div class="step-n">03 — Send</div><h3>Price &amp; propose</h3><p>Footage becomes a priced, editable estimate. Send a branded proposal link the customer can accept from their phone.</p></div>
       </div>
-    </aside>
-  </main>
+    </section>
 
-  <!-- ============ PROPOSAL OVERLAY ============ -->
-  <div class="sheet-scrim" id="proposalScrim" hidden>
-    <div class="sheet" id="proposalSheet" role="dialog" aria-modal="true" aria-label="Proposal">
-      <div class="sheet-bar">
-        <div class="sheet-bar-left">
-          <span class="brand-node small" aria-hidden="true"></span>
-          <span>Proposal preview</span>
+    <!-- FEATURES -->
+    <section>
+      <span class="kicker">Built for the field</span>
+      <h2>Everything that closes the job. Nothing that doesn't.</h2>
+      <div class="feat">
+        <div class="fcard"><h3><span class="fdot"></span>On their real house</h3><p>Upload a phone photo or use the demo home. Set scale from any known length — a garage door, the front door — and every foot is measured and priced.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>Permanent or seasonal</h3><p>Switch pricing models in a tap. Permanent track with a smart controller, or seasonal install-and-takedown — the proposal copy adapts.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>Shareable proposals</h3><p>One link opens a clean, customer-facing proposal with the lit-house preview, totals, and an accept button. Works on any phone.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>Print &amp; PDF ready</h3><p>Every proposal prints to a tidy, branded PDF for the homeowners who still want paper on the fridge.</p></div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing">
+      <span class="kicker">Pricing</span>
+      <h2>One plan. It pays for itself on the first job.</h2>
+      <div class="price">
+        <div class="pcard feature">
+          <div class="p-name">Installer Pro</div>
+          <div class="p-amt">$39<span>/mo</span></div>
+          <div class="p-desc">For the pro closing jobs every week.</div>
+          <ul class="p-list">
+            <li>Unlimited proposals &amp; shareable links</li>
+            <li>Permanent &amp; seasonal pricing models</li>
+            <li>Saved customer proposals</li>
+            <li>Branded PDF export</li>
+          </ul>
+          <a href="#waitlist" class="btn btn-primary" style="width:100%;justify-content:center">Join the waitlist</a>
         </div>
-        <div class="sheet-bar-right">
-          <button class="ghost-btn" id="btnShare">Copy share link</button>
-          <button class="ghost-btn" id="btnPrint">Print / PDF</button>
-          <button class="ghost-btn" id="btnCloseProposal">Close</button>
+        <div class="pcard">
+          <div class="p-name">Per proposal</div>
+          <div class="p-amt">$9<span>/proposal</span></div>
+          <div class="p-desc">For seasonal crews and side hustles.</div>
+          <ul class="p-list">
+            <li>Pay only when you send</li>
+            <li>Same design &amp; proposal tools</li>
+            <li>No monthly commitment</li>
+            <li>Upgrade to Pro anytime</li>
+          </ul>
+          <a href="app.html" class="btn btn-ghost" style="width:100%;justify-content:center">Try the demo free</a>
         </div>
       </div>
-      <div class="sheet-body" id="proposalBody"><!-- injected --></div>
-    </div>
+    </section>
+
+    <!-- WAITLIST -->
+    <section id="waitlist">
+      <div class="waitlist">
+        <span class="kicker">Founding installers</span>
+        <h2>Be first when Glowline opens.</h2>
+        <p class="lead" style="margin-left:auto;margin-right:auto;text-align:center">Founding installers lock in Pro pricing for life and help shape what ships next. Drop your email — no spam, just launch news.</p>
+        <form class="wl-form" id="wlForm" novalidate>
+          <input type="email" id="wlEmail" placeholder="you@yourlightingco.com" aria-label="Email" required />
+          <button type="submit" class="btn btn-primary">Request access</button>
+        </form>
+        <div class="wl-ok" id="wlOk" hidden></div>
+        <p class="wl-fine">Prefer to just look? <a href="app.html" style="color:var(--frost-dim)">Open the live demo →</a></p>
+      </div>
+    </section>
   </div>
 
-  <!-- ============ SAVED DRAWER ============ -->
-  <div class="sheet-scrim" id="savedScrim" hidden>
-    <div class="drawer" id="savedDrawer" role="dialog" aria-modal="true" aria-label="Saved proposals">
-      <div class="drawer-head">
-        <span>Saved proposals</span>
-        <button class="ghost-btn" id="btnCloseSaved">Close</button>
-      </div>
-      <div class="drawer-list" id="savedList"><!-- injected --></div>
-    </div>
+  <div class="wrap">
+    <footer>
+      <div class="brand"><span class="brand-node" style="width:10px;height:10px"></span><span class="brand-word" style="font-size:15px">Glowline</span></div>
+      <div>Light design for lighting pros · <a href="app.html" style="color:var(--frost-dim)">Open the app</a></div>
+    </footer>
   </div>
 
-  <!-- customer details captured lazily when building a proposal -->
-  <template id="customerFormTpl">
-    <div class="cust-form">
-      <div class="cust-grid">
-        <label>Your company<input data-c="company" placeholder="North Ridge Lighting Co." /></label>
-        <label>Customer name<input data-c="name" placeholder="The Bergstroms" /></label>
-        <label>Property address<input data-c="address" placeholder="118 Maple Court" /></label>
-        <label>Good through<input data-c="expiry" placeholder="14 days" /></label>
-      </div>
-    </div>
-  </template>
-
-  <!-- full-page read-only proposal (opened from a #p= share link) -->
-  <div id="sharedView" hidden></div>
-
-  <!-- transient toast -->
-  <div id="toast" class="toast" hidden></div>
-
-  <script src="app.js"></script>
+  <script>
+    // starfield
+    (function(){
+      const s=document.getElementById('stars'); let m='';
+      for(let i=0;i<40;i++){const x=(Math.random()*500).toFixed(0),y=(Math.random()*160).toFixed(0),r=(Math.random()*1.1+.3).toFixed(1),o=(Math.random()*.6+.2).toFixed(2);m+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="${o}"/>`;}
+      s.innerHTML=m;
+    })();
+    // bulbs along the rooflines
+    (function(){
+      const runs=[[[96,184],[225,96],[354,184]],[[318,224],[390,168],[462,224]]];
+      const spacing=15, r=3;
+      function sample(pts){const out=[{x:pts[0][0],y:pts[0][1]}];let res=spacing;for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);let d=res;while(d<L){const t=d/L;out.push({x:a[0]+dx*t,y:a[1]+dy*t});d+=spacing;}res=d-L;}out.push({x:pts[pts.length-1][0],y:pts[pts.length-1][1]});return out;}
+      let halos='',cores='',k=0;
+      runs.forEach(run=>{sample(run).forEach(p=>{const cls=k%2?'lb-b':'lb-a';const delay=(0.3+k*0.03).toFixed(2);
+        halos+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r*2.4}" fill="#ffd7a1" opacity=".5" class="${cls}" style="animation-delay:${delay}s,2.2s,${delay}s"/>`;
+        cores+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="#ffd7a1" class="${cls}" style="animation-delay:${delay}s,2.2s,${delay}s"/>`;
+        k++;});});
+      document.getElementById('bulbHalos').innerHTML=halos;
+      document.getElementById('bulbs').innerHTML=cores;
+    })();
+    // scene tag cycles with the animation
+    (function(){
+      const tags=['warm white · everyday','Christmas','Halloween','Fourth of July'];
+      const tag=document.getElementById('sceneTag'); let i=0;
+      setInterval(()=>{i=(i+1)%tags.length;tag.textContent=tags[i]+' · one install';},3250);
+    })();
+    // waitlist capture (client-side for now; swap in a real endpoint later)
+    (function(){
+      const form=document.getElementById('wlForm'), ok=document.getElementById('wlOk');
+      form.addEventListener('submit',e=>{
+        e.preventDefault();
+        const email=document.getElementById('wlEmail').value.trim();
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){document.getElementById('wlEmail').focus();return;}
+        try{const list=JSON.parse(localStorage.getItem('glowline.waitlist')||'[]');list.push({email,at:Date.now()});localStorage.setItem('glowline.waitlist',JSON.stringify(list));}catch(e){}
+        // TODO: POST { email } to your form endpoint / Supabase here.
+        form.hidden=true; ok.hidden=false;
+        ok.textContent="You're on the list — we'll email you the moment Glowline opens.";
+      });
+    })();
+  </script>
 </body>
 </html>
