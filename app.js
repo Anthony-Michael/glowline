@@ -691,6 +691,78 @@
   function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
   /* =========================================================================
+     CREW / MATERIALS SHEET  (internal — a bill of materials from the trace)
+     ========================================================================= */
+  $('#btnCrew').addEventListener('click', openCrew);
+  $('#btnCloseCrew').addEventListener('click', () => { $('#crewScrim').hidden = true; });
+  $('#btnCrewPrint').addEventListener('click', () => window.print());
+  $('#crewScrim').addEventListener('click', (e) => { if (e.target === $('#crewScrim')) $('#crewScrim').hidden = true; });
+
+  function runFeet(run) { return state.scale.pxPerFoot ? runPixels(run.points) / state.scale.pxPerFoot : 0; }
+
+  function openCrew() {
+    const runs = tracedRuns();
+    if (!runs.length || !state.scale.pxPerFoot) { toast('Trace a roofline and set the scale first'); return; }
+    const L = polylineFeet();
+    const N = totalNodes();
+    const corners = runs.reduce((s, r) => s + Math.max(0, r.points.length - 2), 0);
+    const drops = runs.length;
+    const sticks = Math.ceil(L / 10);
+    const clips = Math.ceil(L * 0.8);                 // ~1 every 16"
+    const endCaps = drops * 2;
+    const injections = Math.max(drops, Math.ceil(L / 50));
+    const watts = Math.ceil(N * 0.9);                 // ~0.9 W per RGBW node
+    const psu = Math.ceil((watts * 1.2) / 60) * 60;   // size up 20%, 60 W increments
+
+    const rows = [
+      ['Roofline channel / track', `${Math.ceil(L)} ft`, `≈ ${sticks} × 10 ft sticks`],
+      ['LED nodes (12&quot; spacing)', `${N}`, `${(N / Math.max(1, L)).toFixed(1)} per ft`],
+      ['Mounting clips', `${clips}`, '~1 every 16 in'],
+      ['Corner / bend connectors', `${corners}`, 'interior vertices'],
+      ['End caps', `${endCaps}`, '2 per run'],
+      ['Lead / drop wires', `${drops}`, '1 per run'],
+      ['Power injection points', `${injections}`, '1 per ~50 ft, min 1/run'],
+    ];
+    if (state.system === 'permanent') {
+      rows.push(['Power supply', `${psu} W`, `~${watts} W load + headroom`]);
+      rows.push(['Smart controller', '1', 'Glowline app + scenes']);
+    }
+
+    const rowHTML = rows.map((r) =>
+      `<tr><td><strong>${r[0]}</strong></td><td class="r">${r[1]}</td><td class="desc">${r[2]}</td></tr>`).join('');
+
+    const perRun = runs.map((r, i) => {
+      const spacing = Math.max(13, state.imgW / 62);
+      const nodes = sampleBulbs(r.points, spacing).length;
+      return `<tr><td>Run ${i + 1}</td><td class="r">${Math.round(runFeet(r))} ft</td><td class="r">${nodes} nodes</td><td class="desc">${r.points.length - 1} segment${r.points.length - 1 === 1 ? '' : 's'}</td></tr>`;
+    }).join('');
+
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    $('#crewBody').innerHTML = `<div class="doc" style="-webkit-print-color-adjust:exact;print-color-adjust:exact">
+      <div class="doc-top">
+        <div>
+          <div class="doc-co">${escapeHtml(state.projectName || 'Roofline')}</div>
+          <div class="doc-badge"><span class="dot"></span>${state.system === 'permanent' ? 'Permanent' : 'Seasonal'} · Install &amp; materials</div>
+        </div>
+        <div class="doc-meta">
+          <div>${escapeHtml(state.customer.address || '')}</div>
+          <div>${today}</div>
+          <div><strong>${Math.round(L)} ft</strong> · ${N} nodes · ${drops} run${drops > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      <h2>Bill of materials</h2>
+      <table class="doc-table"><tbody>${rowHTML}</tbody></table>
+      <h2>Per-run breakdown</h2>
+      <table class="doc-table"><tbody>${perRun}</tbody></table>
+      <div class="doc-note">
+        Quantities are estimated from the traced roofline and standard spacing — confirm on site before pulling stock.
+        Power supply sized at ~0.9 W/node plus 20% headroom. Add a run for any section the crew mounts separately.
+      </div>
+    </div>`;
+    $('#crewScrim').hidden = false;
+  }
+
+  /* =========================================================================
      SAVE / LOAD (localStorage)
      ========================================================================= */
   const DRAFT_KEY = 'glowline.draft';

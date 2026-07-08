@@ -399,10 +399,12 @@ input{ font-family:inherit; }
 
 @media print{
   body *{ visibility:hidden; }
-  #proposalScrim, #proposalScrim *{ visibility:visible; }
-  #proposalScrim{ position:absolute; inset:0; background:#fff; backdrop-filter:none; padding:0; display:block; }
+  #proposalScrim, #proposalScrim *,
+  #crewScrim, #crewScrim *,
+  #sharedView, #sharedView *{ visibility:visible; }
+  #proposalScrim, #crewScrim{ position:absolute; inset:0; background:#fff; backdrop-filter:none; padding:0; display:block; }
   .sheet{ box-shadow:none; border:none; max-height:none; width:100%; }
-  .sheet-bar, .cust-form{ display:none; }
+  .sheet-bar, .cust-form, .shared-top, .shared-cta, .shared-foot{ display:none; }
   .doc{ padding:0; }
 }
 

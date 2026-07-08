@@ -27,6 +27,7 @@
     </nav>
 
     <div class="topbar-actions">
+      <button id="btnCrew" class="ghost-btn" title="Materials & crew sheet">Crew sheet</button>
       <button id="btnSaved" class="ghost-btn" title="Saved proposals">Saved</button>
       <button id="btnProposal" class="cta-btn">Build proposal</button>
     </div>
@@ -160,6 +161,23 @@
         <button class="ghost-btn" id="btnCloseSaved">Close</button>
       </div>
       <div class="drawer-list" id="savedList"><!-- injected --></div>
+    </div>
+  </div>
+
+  <!-- ============ CREW / MATERIALS SHEET ============ -->
+  <div class="sheet-scrim" id="crewScrim" hidden>
+    <div class="sheet" id="crewSheet" role="dialog" aria-modal="true" aria-label="Crew sheet">
+      <div class="sheet-bar">
+        <div class="sheet-bar-left">
+          <span class="brand-node small" aria-hidden="true"></span>
+          <span>Materials &amp; crew sheet</span>
+        </div>
+        <div class="sheet-bar-right">
+          <button class="ghost-btn" id="btnCrewPrint">Print</button>
+          <button class="ghost-btn" id="btnCloseCrew">Close</button>
+        </div>
+      </div>
+      <div class="sheet-body" id="crewBody"><!-- injected --></div>
     </div>
   </div>
 
