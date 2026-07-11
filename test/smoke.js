@@ -44,6 +44,11 @@ function runTest(){
   out.crewOpen=!document.querySelector('#crewScrim').hidden;
   out.crewRows=document.querySelectorAll('#crewBody .doc-table tr').length;
   document.querySelector('#btnCloseCrew').click();
+  // New project banks the current one and resets the workspace
+  document.querySelector('#btnSaved').click();
+  document.querySelector('#btnNewProject').click();
+  out.afterNewFeet=document.querySelector('#feetNum').textContent;
+  out.afterNewRuns=document.querySelectorAll('#overlay polyline').length;
   // snap sub-test: clear, enable snap, click 15px BELOW the roof apex (530,205) → should snap up to the edge (~190)
   document.querySelector('#toolClear').click();
   if(!document.querySelector('#toolSnap').classList.contains('is-active')) document.querySelector('#toolSnap').click();
@@ -95,6 +100,7 @@ const checks = [
   ['season strip = 4 thumbs', r.seasonThumbs === 4, r.seasonThumbs],
   ['crew sheet opens', r.crewOpen === true, r.crewOpen],
   ['crew BOM rows > 5', r.crewRows > 5, r.crewRows],
+  ['New project clears the trace', r.afterNewFeet === '0' && r.afterNewRuns === 0, r.afterNewFeet + '/' + r.afterNewRuns],
   ['edge snap on by default', r.snapDefaultOn === true, r.snapDefaultOn],
   ['snap toggle re-enabled', r.snapOn === true, r.snapOn],
   ['click snapped to roofline (<200 from 205)', r.snapY !== null && r.snapY < 200 && r.snapY > 150, r.snapY],

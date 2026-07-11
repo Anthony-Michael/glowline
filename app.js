@@ -898,6 +898,29 @@
     el.savedScrim.hidden = false;
   });
   $('#btnCloseSaved').addEventListener('click', () => { el.savedScrim.hidden = true; });
+  $('#btnNewProject').addEventListener('click', newProject);
+
+  // start a fresh proposal — banks the current one, keeps the installer's own details
+  function newProject() {
+    saveCurrentToList();
+    state.id = uid();
+    state.projectName = 'Untitled roofline';
+    state.imgSrc = DEMO_HOUSE; state.imgW = DEMO_W; state.imgH = DEMO_H; state.isDemo = true;
+    state.runs = [{ id: uid(), points: [] }]; state.activeRun = 0;
+    state.scale.pxPerFoot = DEMO_PX_PER_FOOT;
+    state.night = false; state.scene = 'warm';
+    state.customer = {
+      company: state.customer.company, name: '', address: '', expiry: '14 days',
+      companyPhone: state.customer.companyPhone, companyEmail: state.customer.companyEmail,
+    };
+    state.lineItems = defaultLineItems();
+    el.img.src = state.imgSrc;
+    el.projectName.value = state.projectName;
+    setTool('trace');
+    render();
+    el.savedScrim.hidden = true;
+    toast('New proposal started', true);
+  }
   el.savedScrim.addEventListener('click', (e) => { if (e.target === el.savedScrim) el.savedScrim.hidden = true; });
 
   function getList() { try { return JSON.parse(localStorage.getItem(LIST_KEY)) || []; } catch (e) { return []; } }
