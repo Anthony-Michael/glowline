@@ -412,12 +412,14 @@ input{ font-family:inherit; }
 @media (max-width:920px){
   :root{ --topbar-h:106px; }
   /* topbar wraps: row 1 = brand + actions, row 2 = full-width scene strip */
-  .topbar{ flex-wrap:wrap; height:var(--topbar-h); align-content:center; padding:8px 12px; gap:6px 10px; }
+  .topbar{ flex-wrap:wrap; height:var(--topbar-h); align-content:center; padding:8px 10px; gap:6px 8px; }
   .project-name{ display:none; }              /* rename lives on desktop; not needed at the door */
   .brand{ order:1; }
-  .topbar-actions{ order:2; margin-left:auto; }
+  .brand-word{ display:none; }                /* logomark only on mobile, frees room for actions */
+  .topbar-actions{ order:2; margin-left:auto; gap:6px; }
+  #btnCrew{ display:none; }                   /* materials BOM is shop/desktop work, not doorstep */
   .scenes{ order:5; flex-basis:100%; width:100%; margin:0; justify-content:flex-start; }
-  .ghost-btn,.cta-btn{ padding:9px 12px; font-size:12.5px; }
+  .ghost-btn,.cta-btn{ padding:8px 11px; font-size:12px; }
 
   .workspace{ grid-template-columns:1fr; grid-template-rows:1fr auto; }
   .rail{ border-left:none; border-top:1px solid var(--hair); max-height:46vh; }
