@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<!-- Source for the 1200x630 social preview image (og.png). Screenshot with headless Chrome. -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@700;800;900&family=Hanken+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;box-sizing:border-box;}
+  html,body{width:1200px;height:630px;overflow:hidden;}
+  body{
+    font-family:"Hanken Grotesk",system-ui,sans-serif; color:#eaf1ff;
+    background:radial-gradient(900px 500px at 78% -10%, #172248 0%, transparent 55%),
+      radial-gradient(700px 500px at 0% 110%, #131a35 0%, transparent 50%), #0a0e1c;
+    display:grid; grid-template-columns:1.1fr .9fr; align-items:center; gap:40px; padding:64px;
+  }
+  .brand{display:flex;align-items:center;gap:14px;margin-bottom:26px;}
+  .node{width:20px;height:20px;border-radius:50%;background:#ffd7a1;box-shadow:0 0 0 4px rgba(255,197,120,.16),0 0 22px 5px #ffb257;}
+  .brand span{font-family:"Archivo Expanded";font-weight:800;font-size:30px;letter-spacing:.04em;}
+  h1{font-family:"Archivo Expanded";font-weight:800;font-size:60px;line-height:1.02;letter-spacing:-.01em;}
+  h1 .lit{color:#ffd7a1;text-shadow:0 0 40px rgba(255,197,120,.5);}
+  p{font-size:24px;color:#aab7d6;margin-top:22px;max-width:20ch;}
+  .scene{border-radius:22px;overflow:hidden;border:1px solid rgba(190,210,255,.12);box-shadow:0 30px 80px -30px rgba(0,0,0,.8);height:500px;}
+  svg{display:block;width:100%;height:100%;}
+</style>
+</head>
+<body>
+  <div>
+    <div class="brand"><span class="node"></span><span>Glowline</span></div>
+    <h1>Close the <span class="lit">$6,000</span> sale on the doorstep.</h1>
+    <p>Trace the roofline. Light every season. Send the priced proposal.</p>
+  </div>
+  <div class="scene">
+    <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#243056"/><stop offset=".6" stop-color="#3a3f63"/><stop offset="1" stop-color="#5a4f68"/></linearGradient>
+        <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9e2d4"/><stop offset="1" stop-color="#cabfad"/></linearGradient>
+        <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4550"/><stop offset="1" stop-color="#302c37"/></linearGradient>
+        <filter id="bloom" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4.5"/></filter>
+      </defs>
+      <rect width="500" height="500" fill="url(#sky)"/>
+      <circle cx="420" cy="80" r="28" fill="#f3ead0" opacity=".85"/><circle cx="420" cy="80" r="46" fill="#f3ead0" opacity=".12"/>
+      <g id="stars"></g>
+      <rect y="360" width="500" height="140" fill="#2c3a30"/>
+      <rect x="110" y="230" width="230" height="130" fill="url(#wall)"/>
+      <polygon points="96,234 225,146 354,234" fill="url(#roof)"/>
+      <rect x="330" y="278" width="120" height="82" fill="url(#wall)"/>
+      <polygon points="318,282 390,226 462,282" fill="url(#roof)"/>
+      <rect x="205" y="300" width="34" height="60" fill="#5a4632"/>
+      <rect x="135" y="262" width="34" height="34" fill="#ffd98a" opacity=".85"/>
+      <rect x="280" y="262" width="34" height="34" fill="#ffd98a" opacity=".85"/>
+      <g id="halos" filter="url(#bloom)"></g>
+      <g id="cores"></g>
+    </svg>
+  </div>
+  <script>
+    (function(){
+      var s='';for(var i=0;i<40;i++){s+='<circle cx="'+(Math.random()*500|0)+'" cy="'+(Math.random()*200|0)+'" r="'+(Math.random()*1.2+.3).toFixed(1)+'" fill="#fff" opacity="'+(Math.random()*.6+.2).toFixed(2)+'"/>';}
+      document.getElementById('stars').innerHTML=s;
+      var runs=[[[96,234],[225,146],[354,234]],[[318,282],[390,226],[462,282]]];
+      var pal=['#ff3b3b','#2ee06b'],sp=15,r=3.4,h='',c='',k=0;
+      function samp(pts){var o=[{x:pts[0][0],y:pts[0][1]}],res=sp;for(var i=0;i<pts.length-1;i++){var a=pts[i],b=pts[i+1],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),d=res;while(d<L){var t=d/L;o.push({x:a[0]+dx*t,y:a[1]+dy*t});d+=sp;}res=d-L;}o.push({x:pts[pts.length-1][0],y:pts[pts.length-1][1]});return o;}
+      runs.forEach(function(run){samp(run).forEach(function(p){var col=pal[k%2];h+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(r*2.6)+'" fill="'+col+'" opacity=".55"/>';c+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+r+'" fill="'+col+'"/><circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(r*.42)+'" fill="#fff"/>';k++;});});
+      document.getElementById('halos').innerHTML=h;document.getElementById('cores').innerHTML=c;
+    })();
+  </script>
+</body>
+</html>
