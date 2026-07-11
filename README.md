@@ -45,7 +45,9 @@ saved customer library, crew hand-off, deposit collection via Stripe.
 - **Live estimate** — auto per-foot line item from the trace, plus fully editable line
   items, tax, and deposit. Permanent vs. seasonal pricing presets.
 - **Branded proposal** — generates a print/PDF-ready document with the lit-house preview
-  embedded, itemized scope, totals, and a signature block.
+  embedded, itemized scope, totals, and a signature block. A **season strip** shows the
+  same install in Everyday White, Christmas, Halloween, and Fourth of July — the visual
+  that justifies the year-round permanent system.
 - **Shareable link** — one click copies a link that opens a clean, customer-facing
   read-only proposal (the whole thing is encoded in the URL — no backend). The customer
   can review, "Accept & request install," or save it as a PDF.

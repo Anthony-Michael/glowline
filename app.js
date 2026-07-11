@@ -612,6 +612,7 @@
         </div>
         <div class="doc-hero-cap">${sceneName} · ${d.feet} ft of roofline</div>
       </div>
+      ${seasonStripHTML(d)}
       <h2>Scope &amp; investment</h2>
       <table class="doc-table"><tbody>${rows}</tbody></table>
       <div class="doc-tot">
@@ -632,6 +633,28 @@
       </div>
     </div>`;
   }
+
+  // a row of static previews showing the same install in different holidays
+  function seasonStripHTML(d) {
+    if (!tracedRunsFrom(d.runs).length) return '';
+    const keys = ['warm', 'xmas', 'hallow', 'july4'];
+    const cap = d.system === 'permanent'
+      ? 'One install, every holiday — no ladders, ever:'
+      : 'A few of the looks this set can do:';
+    const thumbs = keys.map((k) => {
+      const inner = buildOverlayInner(d.runs, k, { handles: false, still: true, W: d.imgW });
+      return `<div class="doc-thumb">
+        <div class="tw">
+          <img src="${d.imgSrc}" />
+          <div class="tv"></div>
+          <svg viewBox="0 0 ${d.imgW} ${d.imgH}" preserveAspectRatio="none">${inner}</svg>
+        </div>
+        <span>${SCENES[k].name}</span>
+      </div>`;
+    }).join('');
+    return `<div class="doc-seasons-cap">${cap}</div><div class="doc-thumbs">${thumbs}</div>`;
+  }
+  function tracedRunsFrom(runs) { return (runs || []).filter((r) => r.points && r.points.length >= 2); }
 
   function openProposal() {
     const custForm = document.getElementById('customerFormTpl').content.cloneNode(true);

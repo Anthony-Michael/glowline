@@ -38,6 +38,7 @@ function runTest(){
   document.querySelector('#btnProposal').click();
   out.proposalRows=document.querySelectorAll('.doc-table tr').length;
   out.heroCircles=document.querySelectorAll('.doc-hero svg circle').length;
+  out.seasonThumbs=document.querySelectorAll('.doc-thumb').length;
   document.querySelector('#btnCloseProposal').click();
   document.querySelector('#btnCrew').click();
   out.crewOpen=!document.querySelector('#crewScrim').hidden;
@@ -91,6 +92,7 @@ const checks = [
   ['total = $1,697', r.total === '$1,697', r.total],
   ['proposal rows >= 2', r.proposalRows >= 2, r.proposalRows],
   ['proposal hero lit', r.heroCircles > 100, r.heroCircles],
+  ['season strip = 4 thumbs', r.seasonThumbs === 4, r.seasonThumbs],
   ['crew sheet opens', r.crewOpen === true, r.crewOpen],
   ['crew BOM rows > 5', r.crewRows > 5, r.crewRows],
   ['edge snap on by default', r.snapDefaultOn === true, r.snapDefaultOn],
