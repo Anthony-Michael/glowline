@@ -44,6 +44,11 @@ function runTest(){
   out.crewOpen=!document.querySelector('#crewScrim').hidden;
   out.crewRows=document.querySelectorAll('#crewBody .doc-table tr').length;
   document.querySelector('#btnCloseCrew').click();
+  // custom brand colors: set color 1, expect the scene to switch to custom and bulbs to recolor
+  var cc0=document.querySelector('.scene-custom .cc[data-i="0"]');
+  cc0.value='#123456'; cc0.dispatchEvent(new Event('input',{bubbles:true}));
+  out.customActive=document.querySelector('.scene-custom').classList.contains('is-active');
+  out.customBulbFill=(document.querySelector('#overlay circle')||{}).getAttribute ? document.querySelector('#overlay circle').getAttribute('fill') : null;
   // New project banks the current one and resets the workspace
   document.querySelector('#btnSaved').click();
   document.querySelector('#btnNewProject').click();
@@ -100,6 +105,8 @@ const checks = [
   ['season strip = 4 thumbs', r.seasonThumbs === 4, r.seasonThumbs],
   ['crew sheet opens', r.crewOpen === true, r.crewOpen],
   ['crew BOM rows > 5', r.crewRows > 5, r.crewRows],
+  ['custom scene activates', r.customActive === true, r.customActive],
+  ['custom color recolors bulbs', r.customBulbFill === '#123456', r.customBulbFill],
   ['New project clears the trace', r.afterNewFeet === '0' && r.afterNewRuns === 0, r.afterNewFeet + '/' + r.afterNewRuns],
   ['edge snap on by default', r.snapDefaultOn === true, r.snapDefaultOn],
   ['snap toggle re-enabled', r.snapOn === true, r.snapOn],

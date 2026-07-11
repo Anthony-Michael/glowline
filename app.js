@@ -33,6 +33,7 @@
     night: false,
     tool: 'trace',
     snap: true,                       // snap traced points to the nearest strong roofline edge
+    customColors: ['#ff4d4d', '#ffffff'], // team / brand colors for the "Custom" scene
     runs: [{ id: 'r1', points: [] }], // each run = one continuous roof section [{x,y}] in image coords
     activeRun: 0,
     scale: { pxPerFoot: DEMO_PX_PER_FOOT, calib: [] }, // calib: up to 2 pts while measuring
@@ -199,11 +200,21 @@
   function renderScenes() {
     if (el.scenes.children.length) {
       [...el.scenes.children].forEach((c) => c.classList.toggle('is-active', c.dataset.scene === state.scene));
+      syncCustomInputs();
       return;
     }
-    el.scenes.innerHTML = Object.entries(SCENES).map(([k, s]) =>
+    const preset = Object.entries(SCENES).map(([k, s]) =>
       `<button class="scene-chip ${k === state.scene ? 'is-active' : ''}" data-scene="${k}" style="--c:${s.swatch}">
          <span class="swatch"></span>${s.name}</button>`).join('');
+    const custom = `<button class="scene-chip scene-custom ${state.scene === 'custom' ? 'is-active' : ''}" data-scene="custom" style="--c:${state.customColors[0]}" title="Your brand / team colors">
+         <span class="cc-wrap">
+           <input type="color" class="cc" data-i="0" value="${state.customColors[0]}" aria-label="Custom color 1" />
+           <input type="color" class="cc" data-i="1" value="${state.customColors[1]}" aria-label="Custom color 2" />
+         </span>Custom</button>`;
+    el.scenes.innerHTML = preset + custom;
+  }
+  function syncCustomInputs() {
+    el.scenes.querySelectorAll('.cc').forEach((inp) => { inp.value = state.customColors[+inp.dataset.i]; });
   }
 
   // sample evenly-spaced bulb positions along the traced polyline
@@ -226,7 +237,9 @@
   // build the inner SVG markup for a set of runs (reused live + in the proposal hero)
   function buildOverlayInner(runs, sceneKey, opts = {}) {
     const { handles = false, W = state.imgW, activeRun = -1 } = opts;
-    const scene = SCENES[sceneKey] || SCENES.warm;
+    const colors = (sceneKey === 'custom')
+      ? (opts.customColors && opts.customColors.length ? opts.customColors : ['#ff4d4d', '#ffffff'])
+      : (SCENES[sceneKey] || SCENES.warm).colors;
     const spacing = Math.max(13, W / 62);
     const twinkle = !opts.still;
     const r = Math.max(3.2, W / 200);
@@ -249,7 +262,7 @@
       }
       const bulbs = sampleBulbs(pts, spacing);
       bulbs.forEach((p) => {
-        const c = scene.colors[colorIdx % scene.colors.length]; colorIdx++;
+        const c = colors[colorIdx % colors.length]; colorIdx++;
         halos += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r * 2.6}" fill="${c}" opacity="0.5" filter="url(#gl-bloom)" />`;
         const delay = twinkle ? ((colorIdx * 137) % 360) / 100 : 0;
         const anim = twinkle ? ` class="bulb" style="animation-delay:${delay}s"` : '';
@@ -279,7 +292,7 @@
   function renderOverlay() {
     el.overlay.setAttribute('viewBox', `0 0 ${state.imgW} ${state.imgH}`);
     el.overlay.innerHTML = buildOverlayInner(state.runs, state.scene,
-      { handles: state.tool === 'trace', W: state.imgW, activeRun: state.activeRun });
+      { handles: state.tool === 'trace', W: state.imgW, activeRun: state.activeRun, customColors: state.customColors });
   }
 
   function renderReadout() {
@@ -481,6 +494,14 @@
     if (!state.night) state.night = true; // scenes read best at night
     render();
   });
+  // custom brand/team color pickers
+  el.scenes.addEventListener('input', (ev) => {
+    const inp = ev.target.closest('.cc'); if (!inp) return;
+    state.customColors[+inp.dataset.i] = inp.value;
+    state.scene = 'custom';
+    if (!state.night) state.night = true;
+    render();
+  });
 
   el.systemSeg.addEventListener('click', (ev) => {
     const opt = ev.target.closest('.seg-opt'); if (!opt) return;
@@ -565,6 +586,7 @@
     const sub = subtotal(), tax = sub * (state.tax / 100), total = sub + tax, dep = total * (state.deposit / 100);
     return {
       v: 2, projectName: state.projectName, system: state.system, scene: state.scene,
+      customColors: state.customColors,
       imgSrc: state.imgSrc, imgW: state.imgW, imgH: state.imgH, runs: state.runs,
       feet: Math.round(polylineFeet()),
       lineItems: state.lineItems.map((l) => ({ label: l.label, unit: l.unit, qty: l.qty, rate: l.rate, amount: lineAmount(l) })),
@@ -576,12 +598,12 @@
   function docHTML(d) {
     const c = d.customer || {};
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    const heroInner = buildOverlayInner(d.runs, d.scene, { handles: false, still: false, W: d.imgW });
+    const heroInner = buildOverlayInner(d.runs, d.scene, { handles: false, still: false, W: d.imgW, customColors: d.customColors });
     const sub = d.sub ?? d.lineItems.reduce((s, l) => s + l.amount, 0);
     const tax = d.taxAmt ?? sub * (d.tax / 100);
     const total = d.total ?? sub + tax;
     const dep = d.dep ?? total * (d.deposit / 100);
-    const sceneName = (SCENES[d.scene] || SCENES.warm).name;
+    const sceneName = d.scene === 'custom' ? 'Custom colors' : (SCENES[d.scene] || SCENES.warm).name;
     const rows = d.lineItems.map((l) => {
       const q = l.unit ? `${l.qty || 0} ${l.unit} × $${l.rate}` : 'Flat rate';
       return `<tr><td><strong>${escapeHtml(l.label)}</strong><div class="desc">${q}</div></td>
@@ -855,6 +877,7 @@
       id: state.id || (state.id = uid()),
       projectName: state.projectName, imgSrc: state.imgSrc, imgW: state.imgW, imgH: state.imgH,
       isDemo: state.isDemo, system: state.system, scene: state.scene, night: state.night, snap: state.snap,
+      customColors: state.customColors,
       runs: state.runs, activeRun: state.activeRun, scale: { pxPerFoot: state.scale.pxPerFoot },
       lineItems: state.lineItems, tax: state.tax, deposit: state.deposit, customer: state.customer,
       savedAt: Date.now(), v: 2,
@@ -874,6 +897,7 @@
       id: snap.id, projectName: snap.projectName, imgSrc: snap.imgSrc, imgW: snap.imgW, imgH: snap.imgH,
       isDemo: snap.isDemo, system: snap.system, scene: snap.scene, night: snap.night,
       snap: snap.snap !== undefined ? snap.snap : true,
+      customColors: snap.customColors || ['#ff4d4d', '#ffffff'],
       activeRun: snap.activeRun || 0, tax: snap.tax, deposit: snap.deposit,
       customer: snap.customer || state.customer,
       lineItems: snap.lineItems || [],

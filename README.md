@@ -39,7 +39,8 @@ saved customer library, crew hand-off, deposit collection via Stripe.
 - **Multiple roof runs** — trace the main gable, then hit **New run** for the detached
   garage or porch. Each section is independent; footage and nodes sum across all of them.
 - **Preview any season** — Warm White, Cool White, Christmas, Halloween, Fourth of July,
-  Fall Amber. The nodes recolor live and the scene dims to night so it reads like dusk.
+  Fall Amber, plus a **Custom** scene with two brand/team color pickers (HOA, school,
+  or sports colors — a real selling point). Nodes recolor live and the scene dims to night.
 - **Real measurements** — set scale by clicking two points on something of known length
   (garage door ≈ 16 ft), and every foot of roofline is priced from that.
 - **Live estimate** — auto per-foot line item from the trace, plus fully editable line
