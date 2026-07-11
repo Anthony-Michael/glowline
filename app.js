@@ -39,7 +39,7 @@
     lineItems: [],
     tax: 8,
     deposit: 50,
-    customer: { company: '', name: '', address: '', expiry: '14 days' },
+    customer: { company: '', name: '', address: '', expiry: '14 days', companyPhone: '', companyEmail: '' },
   };
 
   /* ---------- element refs ---------- */
@@ -546,6 +546,9 @@
         <div>
           <div class="doc-co">${escapeHtml(c.company || 'Your Company')}</div>
           <div class="doc-badge"><span class="dot"></span>${d.system === 'permanent' ? 'Permanent' : 'Seasonal'} · Holiday Lighting Proposal</div>
+          ${(c.companyPhone || c.companyEmail)
+            ? `<div style="margin-top:8px;font-size:12.5px;color:#555">${escapeHtml([c.companyPhone, c.companyEmail].filter(Boolean).join('  ·  '))}</div>`
+            : ''}
         </div>
         <div class="doc-meta">
           <div>Prepared for <strong>${escapeHtml(c.name || '—')}</strong></div>
@@ -682,8 +685,18 @@
       <div class="shared-foot">Presented with <a href="${location.origin + location.pathname.replace(/[^/]*$/, '')}" target="_blank" rel="noopener">Glowline</a> — light design for installers.</div>`;
     document.getElementById('sharedPrint').addEventListener('click', () => window.print());
     document.getElementById('sharedAccept').addEventListener('click', () => {
+      const cust = (d.customer || {});
+      const phone = (cust.companyPhone || '').trim();
+      const email = (cust.companyEmail || '').trim();
+      const name = cust.name || 'A customer';
+      const msg = `Hi ${co} — this is ${name}. I'd like to accept the lighting proposal (${d.feet} ft, ${money(d.total != null ? d.total : 0)}). Let's schedule the install.`;
+      let href = null;
+      if (email) href = 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent('Accepting your lighting proposal') + '&body=' + encodeURIComponent(msg);
+      else if (phone) href = 'sms:' + phone.replace(/[^0-9+]/g, '') + '?&body=' + encodeURIComponent(msg);
+      if (href) { try { window.location.href = href; } catch (e) {} }
+      const reach = email ? `email ${escapeHtml(email)}` : (phone ? `text ${escapeHtml(phone)}` : `reach out`);
       document.getElementById('sharedCtaWrap').outerHTML =
-        `<div class="shared-accepted">Thanks — ${escapeHtml((d.customer && d.customer.name) || 'you')} accepted this proposal. ${escapeHtml(co)} will reach out to schedule your install.</div>`;
+        `<div class="shared-accepted">Thanks — you accepted ${escapeHtml(co)}'s proposal.${email || phone ? ` Your message app should open to ${reach}; if not, just ${reach} to lock in your install.` : ` ${escapeHtml(co)} will reach out to schedule your install.`}</div>`;
     });
     return true;
   }
