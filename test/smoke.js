@@ -21,18 +21,20 @@ function runTest(){
   if(!diag.hasXmas){ R.textContent='DIAG:'+JSON.stringify(diag); return; }
   var ov=document.querySelector('#overlay'); var r=ov.getBoundingClientRect(); var VB=1200,VBh=760;
   function clickAt(x,y){ov.dispatchEvent(new MouseEvent('click',{clientX:r.left+(x/VB)*r.width,clientY:r.top+(y/VBh)*r.height,bubbles:true}));}
+  var out={};
+  // snap defaults on; disable it so the exact-vertex trace is deterministic
+  out.snapDefaultOn=document.querySelector('#toolSnap').classList.contains('is-active');
+  if(out.snapDefaultOn) document.querySelector('#toolSnap').click();
   [[230,335],[530,190],[830,335]].forEach(function(p){clickAt(p[0],p[1]);});
   document.querySelector('#toolNewRun').click();
   [[752,425],[920,330],[1088,425]].forEach(function(p){clickAt(p[0],p[1]);});
   document.querySelector('.scene-chip[data-scene="xmas"]').click();
-  var out={
-    rectW:Math.round(r.width),
-    feet:document.querySelector('#feetNum').textContent,
-    bulbs:ov.querySelectorAll('circle').length,
-    polylines:ov.querySelectorAll('polyline').length,
-    night:document.querySelector('#canvasFrame').classList.contains('is-night'),
-    total:document.querySelector('#tTotal').textContent
-  };
+  out.rectW=Math.round(r.width);
+  out.feet=document.querySelector('#feetNum').textContent;
+  out.bulbs=ov.querySelectorAll('circle').length;
+  out.polylines=ov.querySelectorAll('polyline').length;
+  out.night=document.querySelector('#canvasFrame').classList.contains('is-night');
+  out.total=document.querySelector('#tTotal').textContent;
   document.querySelector('#btnProposal').click();
   out.proposalRows=document.querySelectorAll('.doc-table tr').length;
   out.heroCircles=document.querySelectorAll('.doc-hero svg circle').length;
@@ -40,6 +42,14 @@ function runTest(){
   document.querySelector('#btnCrew').click();
   out.crewOpen=!document.querySelector('#crewScrim').hidden;
   out.crewRows=document.querySelectorAll('#crewBody .doc-table tr').length;
+  document.querySelector('#btnCloseCrew').click();
+  // snap sub-test: clear, enable snap, click 15px BELOW the roof apex (530,205) → should snap up to the edge (~190)
+  document.querySelector('#toolClear').click();
+  if(!document.querySelector('#toolSnap').classList.contains('is-active')) document.querySelector('#toolSnap').click();
+  out.snapOn=document.querySelector('#toolSnap').classList.contains('is-active');
+  clickAt(530,205);
+  var vh=document.querySelector('.vhandle');
+  out.snapY=vh?Math.round(parseFloat(vh.getAttribute('cy'))):null;
   out.errs=window.__err;
   R.textContent=JSON.stringify(out);
  }catch(e){ R.textContent='THREW:'+(e&&e.stack||e); }
@@ -83,6 +93,9 @@ const checks = [
   ['proposal hero lit', r.heroCircles > 100, r.heroCircles],
   ['crew sheet opens', r.crewOpen === true, r.crewOpen],
   ['crew BOM rows > 5', r.crewRows > 5, r.crewRows],
+  ['edge snap on by default', r.snapDefaultOn === true, r.snapDefaultOn],
+  ['snap toggle re-enabled', r.snapOn === true, r.snapOn],
+  ['click snapped to roofline (<200 from 205)', r.snapY !== null && r.snapY < 200 && r.snapY > 150, r.snapY],
 ];
 
 let ok = true;

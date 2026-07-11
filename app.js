@@ -32,6 +32,7 @@
     scene: 'warm',
     night: false,
     tool: 'trace',
+    snap: true,                       // snap traced points to the nearest strong roofline edge
     runs: [{ id: 'r1', points: [] }], // each run = one continuous roof section [{x,y}] in image coords
     activeRun: 0,
     scale: { pxPerFoot: DEMO_PX_PER_FOOT, calib: [] }, // calib: up to 2 pts while measuring
@@ -64,6 +65,49 @@
   const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
   const uid = () => Math.random().toString(36).slice(2, 9);
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  /* ---------- edge-snap assist (Sobel edge map of the current photo) ---------- */
+  let edge = null; // { data:Uint8ClampedArray, w, h, sx, sy }
+
+  function buildEdgeMap() {
+    try {
+      const MAXW = 760;
+      const scale = Math.min(1, MAXW / state.imgW);
+      const w = Math.max(2, Math.round(state.imgW * scale));
+      const h = Math.max(2, Math.round(state.imgH * scale));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(el.img, 0, 0, w, h);
+      const src = ctx.getImageData(0, 0, w, h).data;
+      const gray = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) gray[i] = 0.299 * src[i * 4] + 0.587 * src[i * 4 + 1] + 0.114 * src[i * 4 + 2];
+      const mag = new Uint8ClampedArray(w * h);
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const gx = -gray[i - w - 1] - 2 * gray[i - 1] - gray[i + w - 1] + gray[i - w + 1] + 2 * gray[i + 1] + gray[i + w + 1];
+        const gy = -gray[i - w - 1] - 2 * gray[i - w] - gray[i - w + 1] + gray[i + w - 1] + 2 * gray[i + w] + gray[i + w + 1];
+        mag[i] = Math.min(255, Math.hypot(gx, gy));
+      }
+      edge = { data: mag, w, h, sx: w / state.imgW, sy: h / state.imgH };
+    } catch (e) { edge = null; } // tainted canvas etc. — snap simply becomes a no-op
+  }
+
+  // move a point to the strongest nearby edge, preferring closer ones
+  function snapPoint(p) {
+    if (!state.snap || !edge) return p;
+    const cx = Math.round(p.x * edge.sx), cy = Math.round(p.y * edge.sy);
+    const R = Math.max(8, Math.round(edge.w / 45));
+    let bestScore = -1e9, bestMag = 0, bx = cx, by = cy;
+    for (let y = Math.max(1, cy - R); y <= Math.min(edge.h - 2, cy + R); y++) {
+      for (let x = Math.max(1, cx - R); x <= Math.min(edge.w - 2, cx + R); x++) {
+        const m = edge.data[y * edge.w + x];
+        const score = m - 2 * Math.hypot(x - cx, y - cy);
+        if (score > bestScore) { bestScore = score; bestMag = m; bx = x; by = y; }
+      }
+    }
+    if (bestMag < 45) return p; // nothing edge-like nearby — leave the click where it is
+    return { x: bx / edge.sx, y: by / edge.sy };
+  }
 
   // active run's point array (what new clicks append to)
   function activePoints() {
@@ -148,6 +192,7 @@
     document.querySelectorAll('.tool[data-tool]').forEach((b) =>
       b.classList.toggle('is-active', b.dataset.tool === state.tool));
     $('#toolNight').classList.toggle('is-active', state.night);
+    $('#toolSnap').classList.toggle('is-active', state.snap);
     persistDraft();
   }
 
@@ -336,7 +381,7 @@
 
     if (state.tool === 'scale') { handleScaleClick(p); return; }
 
-    activePoints().push(p);
+    activePoints().push(snapPoint(p));
     syncTrackLine();
     render();
   });
@@ -395,6 +440,7 @@
   $('#toolScale').addEventListener('click', () => setTool('scale'));
   $('#toolNewRun').addEventListener('click', newRun);
   $('#toolNight').addEventListener('click', () => { state.night = !state.night; render(); });
+  $('#toolSnap').addEventListener('click', () => { state.snap = !state.snap; render(); toast(state.snap ? 'Edge snap on' : 'Edge snap off'); });
   $('#toolUndo').addEventListener('click', undo);
   $('#toolClear').addEventListener('click', () => {
     if (!totalPoints()) return;
@@ -785,7 +831,7 @@
     return {
       id: state.id || (state.id = uid()),
       projectName: state.projectName, imgSrc: state.imgSrc, imgW: state.imgW, imgH: state.imgH,
-      isDemo: state.isDemo, system: state.system, scene: state.scene, night: state.night,
+      isDemo: state.isDemo, system: state.system, scene: state.scene, night: state.night, snap: state.snap,
       runs: state.runs, activeRun: state.activeRun, scale: { pxPerFoot: state.scale.pxPerFoot },
       lineItems: state.lineItems, tax: state.tax, deposit: state.deposit, customer: state.customer,
       savedAt: Date.now(), v: 2,
@@ -804,6 +850,7 @@
     Object.assign(state, {
       id: snap.id, projectName: snap.projectName, imgSrc: snap.imgSrc, imgW: snap.imgW, imgH: snap.imgH,
       isDemo: snap.isDemo, system: snap.system, scene: snap.scene, night: snap.night,
+      snap: snap.snap !== undefined ? snap.snap : true,
       activeRun: snap.activeRun || 0, tax: snap.tax, deposit: snap.deposit,
       customer: snap.customer || state.customer,
       lineItems: snap.lineItems || [],
@@ -895,7 +942,7 @@
     }
     initEditor();
   }
-  el.img.addEventListener('load', () => { /* image ready; overlay uses viewBox so no action needed */ });
+  el.img.addEventListener('load', () => { buildEdgeMap(); });
   boot();
 
   /* =========================================================================

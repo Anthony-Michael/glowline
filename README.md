@@ -33,6 +33,9 @@ saved customer library, crew hand-off, deposit collection via Stripe.
 
 - **Trace the roofline** on a photo (or the built-in demo house) — click along the eaves,
   drag any point to adjust. A warm light-string blooms across the roof as you go.
+- **Edge-snap assist** — clicked points snap to the nearest strong roofline edge (Sobel
+  edge detection on the photo, entirely client-side), so a rough click lands clean on the
+  eave. Toggle it off for freehand placement.
 - **Multiple roof runs** — trace the main gable, then hit **New run** for the detached
   garage or porch. Each section is independent; footage and nodes sum across all of them.
 - **Preview any season** — Warm White, Cool White, Christmas, Halloween, Fourth of July,
@@ -90,8 +93,9 @@ Cloudflare Pages / GitHub Pages — it's just static files.
 2. **Online accept + deposit** (Stripe) on the shared proposal — the close happens online.
    *(Read-only shareable proposals already ship; see above.)*
 3. **Customer & job library**, rebooking reminders (the recurring-revenue hook).
-4. **AI roofline assist** — auto-detect eaves from the uploaded photo so tracing is one tap.
-5. **Material/BOM export** for the install crew (channel length, node count, power injection).
+4. **Full roofline auto-detect** — the edge-snap assist already snaps points to eaves;
+   next is proposing the whole run automatically so tracing is one tap.
+5. **Material/BOM export** for the install crew — *shipped* (Crew sheet).
 
 ---
 
