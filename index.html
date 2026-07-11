@@ -276,6 +276,20 @@
       </div>
     </section>
 
+    <!-- FAQ -->
+    <section id="faq">
+      <span class="kicker">Straight answers</span>
+      <h2>The questions installers actually ask.</h2>
+      <div class="feat">
+        <div class="fcard"><h3><span class="fdot"></span>Do I need to be good at design?</h3><p>No. Snap a photo, click along the roofline, and edge-snap pulls each point onto the eave for you. If you can trace a line, you can build the sale.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>Does it work on my phone at the door?</h3><p>Yes. It runs in any browser — no app to install, no login. Pull it up on a phone or tablet in the driveway and start tracing.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>How accurate is the footage?</h3><p>You set scale from something of known length — a garage door, the front door — and it measures to the foot. The crew sheet lists estimated materials to confirm on site.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>Does it schedule jobs or take payment?</h3><p>Today it designs, prices, and sends the proposal — the part that closes the sale. Online deposits and scheduling are on the roadmap; until then it pairs cleanly with your CRM.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>What does it cost?</h3><p>$39/mo for unlimited proposals, or $9 per proposal if you only light up a few weekends a year. It pays for itself on the first signed job.</p></div>
+        <div class="fcard"><h3><span class="fdot"></span>Where does my data live?</h3><p>Everything runs in your browser. Proposals stay on your device until you choose to share one — a share link carries the proposal itself, no account required.</p></div>
+      </div>
+    </section>
+
     <!-- WAITLIST -->
     <section id="waitlist">
       <div class="waitlist">
@@ -319,11 +333,18 @@
       document.getElementById('bulbHalos').innerHTML=halos;
       document.getElementById('bulbs').innerHTML=cores;
     })();
-    // scene tag cycles with the animation
+    // scene tag, synced to the same clock the CSS bulb-color animation uses
+    // (seasonA/B: 13s loop, 2.2s start delay; warm→Christmas→Halloween→July 4th)
     (function(){
-      const tags=['warm white · everyday','Christmas','Halloween','Fourth of July'];
-      const tag=document.getElementById('sceneTag'); let i=0;
-      setInterval(()=>{i=(i+1)%tags.length;tag.textContent=tags[i]+' · one install';},3250);
+      const tag=document.getElementById('sceneTag');
+      const phases=[[0,'warm white · everyday'],[2860,'Christmas'],[6100,'Halloween'],[9360,'Fourth of July']];
+      function update(){
+        let t=performance.now()-2200; if(t<0)t=0; t%=13000;
+        let name=phases[0][1];
+        for(const [start,label] of phases) if(t>=start) name=label;
+        tag.textContent=name+' · one install';
+      }
+      update(); setInterval(update,400);
     })();
     // waitlist capture (client-side for now; swap in a real endpoint later)
     (function(){
