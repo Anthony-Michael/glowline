@@ -89,16 +89,29 @@ Cloudflare Pages / GitHub Pages — it's just static files.
 | `app.js` | Everything else — tracing, scale, live glow render, pricing, proposal, sharing, persistence |
 | `.github/workflows/deploy.yml` | Auto-deploy to GitHub Pages on push to `main` |
 
+## Already shipped
+
+- Multi-run roofline tracing with drag-to-adjust and **edge-snap** assist
+- 7 preset scenes **+ custom brand/team colors**, live night preview
+- Scale calibration → to-the-foot measurement
+- Editable estimate (permanent vs. seasonal), tax, deposit
+- Branded proposal with **multi-season strip**, installer contact, print/PDF
+- **Shareable read-only proposal links** with a working Accept (email/SMS the installer)
+- **Crew materials sheet** (BOM) from the trace
+- Saved proposals + **New proposal** flow
+- Marketing landing page, FAQ, pricing, waitlist
+- Social share cards (OG/Twitter) + auto-deploy to GitHub Pages
+- Headless-Chrome smoke test (`npm test`)
+
 ## Roadmap to a paid product
 
-1. **Accounts + cloud sync** (Supabase/Postgres) so proposals follow the installer across devices,
-   and **short share links** (store the proposal server-side, send a tiny URL).
+1. **Accounts + cloud sync** (Supabase/Postgres) so proposals follow the installer across
+   devices, and **short share links** (store the proposal server-side, send a tiny URL).
 2. **Online accept + deposit** (Stripe) on the shared proposal — the close happens online.
-   *(Read-only shareable proposals already ship; see above.)*
 3. **Customer & job library**, rebooking reminders (the recurring-revenue hook).
-4. **Full roofline auto-detect** — the edge-snap assist already snaps points to eaves;
-   next is proposing the whole run automatically so tracing is one tap.
-5. **Material/BOM export** for the install crew — *shipped* (Crew sheet).
+4. **Full roofline auto-detect** — edge-snap already snaps points to eaves; next is
+   proposing the whole run automatically so tracing is one tap.
+5. **Team/multi-user** accounts and per-seat billing.
 
 ---
 
