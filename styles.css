@@ -208,6 +208,7 @@ input{ font-family:inherit; }
   background:rgba(255,178,87,.14); border:1px solid rgba(255,178,87,.4); color:var(--glow);
   z-index:20; max-width:min(90%,560px);
 }
+.scale-banner[hidden]{ display:none; }
 .scale-dot{ width:8px; height:8px; border-radius:50%; background:var(--glow-hot); box-shadow:0 0 10px var(--glow-hot); flex-shrink:0; }
 
 /* ---- ESTIMATE RAIL ---- */
@@ -304,6 +305,8 @@ input{ font-family:inherit; }
   display:grid; place-items:center; padding:30px;
   animation:fade .2s ease;
 }
+/* the [hidden] attribute must win over the display:grid above (same specificity → later/explicit needed) */
+.sheet-scrim[hidden]{ display:none; }
 @keyframes fade{ from{ opacity:0; } to{ opacity:1; } }
 .sheet{
   width:min(860px,100%); max-height:90vh; display:flex; flex-direction:column;

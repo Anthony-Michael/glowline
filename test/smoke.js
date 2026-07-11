@@ -22,6 +22,9 @@ function runTest(){
   var ov=document.querySelector('#overlay'); var r=ov.getBoundingClientRect(); var VB=1200,VBh=760;
   function clickAt(x,y){ov.dispatchEvent(new MouseEvent('click',{clientX:r.left+(x/VB)*r.width,clientY:r.top+(y/VBh)*r.height,bubbles:true}));}
   var out={};
+  // all overlays must be genuinely hidden (computed display:none) at boot, not just have the [hidden] attr
+  out.scrimsHiddenAtBoot=['#proposalScrim','#savedScrim','#crewScrim'].every(function(s){return getComputedStyle(document.querySelector(s)).display==='none';});
+  out.scaleBannerHiddenAtBoot=getComputedStyle(document.querySelector('#scaleBanner')).display==='none';
   // snap defaults on; disable it so the exact-vertex trace is deterministic
   out.snapDefaultOn=document.querySelector('#toolSnap').classList.contains('is-active');
   if(out.snapDefaultOn) document.querySelector('#toolSnap').click();
@@ -41,9 +44,10 @@ function runTest(){
   out.seasonThumbs=document.querySelectorAll('.doc-thumb').length;
   document.querySelector('#btnCloseProposal').click();
   document.querySelector('#btnCrew').click();
-  out.crewOpen=!document.querySelector('#crewScrim').hidden;
+  out.crewOpen=getComputedStyle(document.querySelector('#crewScrim')).display!=='none';
   out.crewRows=document.querySelectorAll('#crewBody .doc-table tr').length;
   document.querySelector('#btnCloseCrew').click();
+  out.crewClosedOk=getComputedStyle(document.querySelector('#crewScrim')).display==='none';
   // custom brand colors: set color 1, expect the scene to switch to custom and bulbs to recolor
   var cc0=document.querySelector('.scene-custom .cc[data-i="0"]');
   cc0.value='#123456'; cc0.dispatchEvent(new Event('input',{bubbles:true}));
@@ -94,6 +98,9 @@ try { r = JSON.parse(txt); } catch (e) { console.error('FAIL: bad RESULT json:\n
 
 const checks = [
   ['no JS errors', Array.isArray(r.errs) && r.errs.length === 0, JSON.stringify(r.errs)],
+  ['overlays hidden at boot', r.scrimsHiddenAtBoot === true, r.scrimsHiddenAtBoot],
+  ['scale banner hidden in trace mode', r.scaleBannerHiddenAtBoot === true, r.scaleBannerHiddenAtBoot],
+  ['crew closes (display:none)', r.crewClosedOk === true, r.crewClosedOk],
   ['overlay laid out', r.rectW > 0, r.rectW],
   ['feet = 49', r.feet === '49', r.feet],
   ['two polylines (runs)', r.polylines === 2, r.polylines],

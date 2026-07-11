@@ -9,6 +9,8 @@ proposal — in one flow, on one screen.
 
 ![status](https://img.shields.io/badge/stage-MVP-ffb257) ![type](https://img.shields.io/badge/stack-zero--build%20web-10162a)
 
+![Glowline app — a house traced and lit in Christmas colors with a live priced estimate](docs/screenshot-app.png)
+
 ---
 
 ## Why this exists (the business case)
