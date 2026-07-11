@@ -391,10 +391,24 @@ input{ font-family:inherit; }
 }
 
 @media (max-width:920px){
+  :root{ --topbar-h:106px; }
+  /* topbar wraps: row 1 = brand + actions, row 2 = full-width scene strip */
+  .topbar{ flex-wrap:wrap; height:var(--topbar-h); align-content:center; padding:8px 12px; gap:6px 10px; }
+  .project-name{ display:none; }              /* rename lives on desktop; not needed at the door */
+  .brand{ order:1; }
+  .topbar-actions{ order:2; margin-left:auto; }
+  .scenes{ order:5; flex-basis:100%; width:100%; margin:0; justify-content:flex-start; }
+  .ghost-btn,.cta-btn{ padding:9px 12px; font-size:12.5px; }
+
   .workspace{ grid-template-columns:1fr; grid-template-rows:1fr auto; }
-  .rail{ border-left:none; border-top:1px solid var(--hair); max-height:44vh; }
-  .scenes{ display:none; }
-  #houseImg{ max-height:46vh; }
+  .rail{ border-left:none; border-top:1px solid var(--hair); max-height:46vh; }
+  #houseImg{ max-height:40vh; }
+
+  /* sheets fill more of the screen on phones */
+  .sheet-scrim{ padding:0; }
+  .sheet, .drawer{ border-radius:0; max-height:100vh; height:100vh; width:100%; }
+  .doc{ padding:26px 20px; }
+  .cust-grid{ grid-template-columns:1fr; }
 }
 
 @media print{
